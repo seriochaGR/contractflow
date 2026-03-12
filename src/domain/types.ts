@@ -25,6 +25,9 @@ export interface EngineConfig {
   serviceUseSignals: boolean;
   apiUrlPattern: string;
   serviceSuffix: string;
+  enableContracts: boolean;
+  enableServices: boolean;
+  enableMocks: boolean;
 }
 
 export interface ConvertRequest {
@@ -48,7 +51,10 @@ export const defaultEngineConfig: EngineConfig = {
   injectionStyle: "inject",
   serviceUseSignals: true,
   apiUrlPattern: "/api/{resource}",
-  serviceSuffix: "Service"
+  serviceSuffix: "Service",
+  enableContracts: true,
+  enableServices: true,
+  enableMocks: true
 };
 
 export function withDefaults(config?: Partial<EngineConfig>): EngineConfig {

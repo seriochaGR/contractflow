@@ -19,15 +19,15 @@ export function convertInput(request: ConvertRequest): ConvertResult {
     request.sourceType === "csharp"
       ? parseCSharpModels(request.input, config)
       : parseJsonModels(request.input, modelName, config);
-  const typescript = generateTypescript(models, config);
+  const typescript = config.enableContracts ? generateTypescript(models, config) : "";
   return { models, typescript };
 }
 
 export function generateArtifacts(request: ConvertRequest): EngineOutput {
   const config = withDefaults(request.config);
   const conversion = convertInput({ ...request, config });
-  const angularService = generateAngularService(conversion.models, config);
-  const jsonMocks = generateJsonMocks(conversion.models);
+  const angularService = config.enableServices ? generateAngularService(conversion.models, config) : "";
+  const jsonMocks = config.enableMocks ? generateJsonMocks(conversion.models) : "";
   return {
     ...conversion,
     angularService,

@@ -10,7 +10,10 @@ export const engineConfigSchema = z
     injectionStyle: z.enum(["inject", "constructor"]).default("inject"),
     serviceUseSignals: z.boolean().default(true),
     apiUrlPattern: z.string().default("/api/{resource}"),
-    serviceSuffix: z.string().default("Service")
+    serviceSuffix: z.string().default("Service"),
+    enableContracts: z.boolean().default(true),
+    enableServices: z.boolean().default(true),
+    enableMocks: z.boolean().default(true)
   })
   .partial();
 
