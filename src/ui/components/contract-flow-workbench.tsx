@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from "react";
-import { Braces, Code2, FileCode2, FlaskConical, Settings2, Upload } from "lucide-react";
+import { Braces, Check, Code2, Copy, FileCode2, FlaskConical, Settings2, Upload } from "lucide-react";
 import { defaultEngineConfig, EngineConfig, SourceType } from "@/domain/types";
 import { AppMainHeader } from "@/ui/components/app-main-header";
 import {
@@ -60,6 +60,7 @@ export function ContractFlowWorkbench() {
   const [notification, setNotification] = useState<{ kind: "success" | "error"; message: string } | null>(
     null
   );
+  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -69,6 +70,12 @@ export function ContractFlowWorkbench() {
     }, 4000);
     return () => clearTimeout(timeoutId);
   }, [notification]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeoutId = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timeoutId);
+  }, [copied]);
 
   const enabledOutputTabs = useMemo(() => {
     const tabs: OutputTab[] = [];
@@ -190,6 +197,12 @@ export function ContractFlowWorkbench() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function copyCurrentOutput() {
+    if (!outputValue) return;
+    await navigator.clipboard.writeText(outputValue);
+    setCopied(true);
+  }
+
   return (
     <main className="mx-auto flex h-[calc(100vh-4rem)] max-w-[1600px] flex-col overflow-hidden px-4 py-4 md:px-6">
       <section className="animate-rise mb-4 rounded-2xl border border-cyan-400/25 bg-panel/90 p-4 shadow-glow backdrop-blur-xl">
@@ -280,7 +293,15 @@ export function ContractFlowWorkbench() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-800">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-800">
+            <button
+              type="button"
+              onClick={copyCurrentOutput}
+              className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
             <MonacoEditor
               height="100%"
               language={outputLanguage}

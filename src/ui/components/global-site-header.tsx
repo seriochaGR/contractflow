@@ -9,7 +9,7 @@ export function GlobalSiteHeader() {
         </Link>
         <nav aria-label="Main navigation" className="flex items-center gap-2 text-sm text-slate-300">
           <span className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5">
-            Navigation coming soon
+            Projects coming soon
           </span>
         </nav>
       </div>
