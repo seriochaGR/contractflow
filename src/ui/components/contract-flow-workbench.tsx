@@ -132,13 +132,11 @@ export function ContractFlowWorkbench() {
   }
 
   return (
-    <main className="mx-auto flex h-screen max-w-[1600px] flex-col overflow-hidden px-4 py-4 md:px-6">
+    <main className="mx-auto flex h-[calc(100vh-4rem)] max-w-[1600px] flex-col overflow-hidden px-4 py-4 md:px-6">
       <section className="animate-rise mb-4 rounded-2xl border border-cyan-400/25 bg-panel/90 p-4 shadow-glow backdrop-blur-xl">
         <AppMainHeader
           isLoading={isLoading}
-          showSettings={showSettings}
           onGenerate={runGeneration}
-          onToggleSettings={() => setShowSettings((prev) => !prev)}
         />
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -168,34 +166,33 @@ export function ContractFlowWorkbench() {
 
       <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
-          <div className="mb-2 text-sm font-semibold text-cyan-200">ContractFlow Studio</div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900/80 p-1 text-sm">
-              <button
-                type="button"
-                onClick={() => loadExample("csharp")}
-                className={`rounded-md px-3 py-1.5 ${sourceType === "csharp" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
-              >
-                C#
-              </button>
-              <button
-                type="button"
-                onClick={() => loadExample("json")}
-                className={`rounded-md px-3 py-1.5 ${sourceType === "json" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
-              >
-                JSON
-              </button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <FileCode2 className="h-3.5 w-3.5" /> Input Editor
+              </div>
+              <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900/80 p-1 text-sm">
+                <button
+                  type="button"
+                  onClick={() => loadExample("csharp")}
+                  className={`rounded-md px-3 py-1.5 ${sourceType === "csharp" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
+                >
+                  C#
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadExample("json")}
+                  className={`rounded-md px-3 py-1.5 ${sourceType === "json" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
+                >
+                  JSON
+                </button>
+              </div>             
             </div>
-
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300">
               <Upload className="h-3.5 w-3.5" />
               Upload
               <input type="file" accept=".cs,.json,.txt" onChange={onUpload} className="hidden" />
             </label>
-          </div>
-
-          <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
-            <FileCode2 className="h-3.5 w-3.5" /> Input Editor
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-800">
@@ -211,7 +208,7 @@ export function ContractFlowWorkbench() {
         </article>
 
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <TabButton
               active={outputTab === "typescript"}
               onClick={() => setOutputTab("typescript")}
@@ -230,6 +227,18 @@ export function ContractFlowWorkbench() {
               icon={<FlaskConical className="h-4 w-4" />}
               label="JSON Mocks"
             />
+            <button
+              type="button"
+              onClick={() => setShowSettings((prev) => !prev)}
+              className={`ml-auto inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
+                showSettings
+                  ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
+                  : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600"
+              }`}
+            >
+              <Settings2 className="h-4 w-4" />
+              Settings
+            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-800">

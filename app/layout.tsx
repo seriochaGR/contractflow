@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { ReactNode } from "react";
+import { GlobalSiteHeader } from "@/ui/components/global-site-header";
 
 export const metadata: Metadata = {
   title: "ContractFlow",
@@ -15,7 +16,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <GlobalSiteHeader />
+        <div className="pt-16">{children}</div>
+      </body>
     </html>
   );
 }
