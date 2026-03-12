@@ -1,0 +1,10 @@
+{
+  "UserDto": [
+    {
+      "Id": "example",
+      "DisplayName": null,
+      "BirthDate": "2026-01-01T00:00:00.000Z",
+      "Roles": ["example"]
+    }
+  ]
+}
