@@ -58,9 +58,31 @@ describe("Angular service generator", () => {
       serviceErrorHandling: "loggerService"
     });
 
-    expect(service).toContain("import { LoggerService } from './logger.service';");
     expect(service).toContain("private readonly logger = inject(LoggerService);");
     expect(service).toContain("this.logger.error(`Failed to ${operation}.`, error);");
     expect(service).toContain(".pipe(catchError(this.handleError('create user')))");
+    expect(service).toContain("export class LoggerService");
+  });
+
+  test("generates complementary support services when selected", () => {
+    const service = generateService(models, {
+      modelPrefix: "I",
+      angularVersion: "21",
+      injectionStyle: "constructor",
+      serviceUseSignals: false,
+      serviceErrorHandling: "catchError",
+      serviceDependencies: ["baseApiService", "logService", "mappingService"],
+      serviceExtendsBaseApi: true
+    });
+
+    expect(service).toContain("export class UserService extends BaseApiService");
+    expect(service).toContain("super(http);");
+    expect(service).toContain("private readonly logger: LoggerService");
+    expect(service).toContain("private readonly mapper: MappingService");
+    expect(service).toContain("this.buildUrl(this.baseUrl, id)");
+    expect(service).toContain("export abstract class BaseApiService");
+    expect(service).toContain("export class LoggerService");
+    expect(service).toContain("export class MappingService");
+    expect(service).toContain("map((items) => this.mapper.mapArray(items, (item) => item as IUserDto))");
   });
 });

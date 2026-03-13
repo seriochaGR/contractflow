@@ -5,6 +5,7 @@ export type TsOutputKind = "interface" | "type" | "class";
 export type DateMapping = "string" | "Date";
 export type InjectionStyle = "inject" | "constructor";
 export type ServiceErrorHandling = "catchError" | "loggerService";
+export type ServiceDependencyOption = "logService" | "baseApiService" | "mappingService";
 export type { AngularVersion } from "@/domain/angular-target";
 
 export interface PropertySpec {
@@ -29,6 +30,8 @@ export interface EngineConfig {
   injectionStyle: InjectionStyle;
   serviceUseSignals: boolean;
   serviceErrorHandling: ServiceErrorHandling;
+  serviceDependencies: ServiceDependencyOption[];
+  serviceExtendsBaseApi: boolean;
   apiUrlPattern: string;
   serviceSuffix: string;
   enableContracts: boolean;
@@ -58,6 +61,8 @@ export const defaultEngineConfig: EngineConfig = {
   injectionStyle: "inject",
   serviceUseSignals: true,
   serviceErrorHandling: "catchError",
+  serviceDependencies: [],
+  serviceExtendsBaseApi: false,
   apiUrlPattern: "/api/{resource}",
   serviceSuffix: "Service",
   enableContracts: true,

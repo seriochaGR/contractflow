@@ -12,6 +12,8 @@ export const engineConfigSchema = z
     injectionStyle: z.enum(["inject", "constructor"]).default("inject"),
     serviceUseSignals: z.boolean().default(true),
     serviceErrorHandling: z.enum(["catchError", "loggerService"]).default("catchError"),
+    serviceDependencies: z.array(z.enum(["logService", "baseApiService", "mappingService"])).default([]),
+    serviceExtendsBaseApi: z.boolean().default(false),
     apiUrlPattern: z.string().default("/api/{resource}"),
     serviceSuffix: z.string().default("Service"),
     enableContracts: z.boolean().default(true),

@@ -1,6 +1,6 @@
-import { EngineConfig, ModelSpec } from "@/domain/types";
-import { toKebabCase, toPascalCase } from "@/domain/naming";
 import { buildCompatibilityBanner, getAngularVersionProfile } from "@/domain/angular-target";
+import { toKebabCase, toPascalCase } from "@/domain/naming";
+import { EngineConfig, ModelSpec } from "@/domain/types";
 
 export function generateAngularService(models: ModelSpec[], config: EngineConfig): string {
   if (models.length === 0) {
@@ -17,98 +17,223 @@ export function generateAngularService(models: ModelSpec[], config: EngineConfig
   const baseUrl = config.apiUrlPattern
     .replace("{resource}", resource)
     .replace("{model}", toKebabCase(rootModel.name));
-  const dependencyLines = buildDependencyLines(config);
-  const importLines = buildImportLines(config);
-  const errorHelpers = buildErrorHelpers(config);
 
+  const sections = [
+    renderMainService({
+      baseUrl,
+      config,
+      modelType,
+      resourceLabel,
+      serviceName,
+      versionProfile
+    }),
+    renderBaseApiService(config),
+    renderLoggerService(config),
+    renderMappingService(config)
+  ].filter(Boolean);
+
+  return sections.join("\n\n");
+}
+
+function renderMainService({
+  baseUrl,
+  config,
+  modelType,
+  resourceLabel,
+  serviceName,
+  versionProfile
+}: {
+  baseUrl: string;
+  config: EngineConfig;
+  modelType: string;
+  resourceLabel: string;
+  serviceName: string;
+  versionProfile: ReturnType<typeof getAngularVersionProfile>;
+}): string {
+  const extendsBaseApi = config.serviceExtendsBaseApi || config.serviceDependencies.includes("baseApiService");
+  const usesLogger = config.serviceErrorHandling === "loggerService" || config.serviceDependencies.includes("logService");
+  const usesMapper = config.serviceDependencies.includes("mappingService");
   const signalImports = config.serviceUseSignals ? ", signal" : "";
-  const signalState = config.serviceUseSignals
-    ? [
-        "  private readonly _items = signal<" + modelType + "[]>([]);",
-        "  readonly items = this._items.asReadonly();",
-        "  private readonly _loading = signal(false);",
-        "  readonly loading = this._loading.asReadonly();",
-        "  // Stable signal store for Angular " + versionProfile.version + " without relying on experimental resource APIs.",
-        "",
-        "  loadAll(): void {",
-        "    this._loading.set(true);",
-        "    this.list().subscribe({",
-        "      next: (items) => this._items.set(items),",
-        "      complete: () => this._loading.set(false),",
-        "      error: () => this._loading.set(false)",
-        "    });",
-        "  }",
-        ""
-      ].join("\n")
-    : "";
+  const injectImport = config.injectionStyle === "inject" || extendsBaseApi ? ", inject" : "";
+  const rxjsOperators = ["catchError", "throwError"];
+
+  if (usesMapper) {
+    rxjsOperators.splice(1, 0, "map");
+  }
 
   return [
     buildCompatibilityBanner(config.angularVersion, "service"),
-    `import { Injectable${signalImports}${config.injectionStyle === "inject" ? ", inject" : ""} } from '@angular/core';`,
-    ...importLines,
+    `import { Injectable${signalImports}${injectImport} } from '@angular/core';`,
+    "import { HttpClient } from '@angular/common/http';",
+    `import { Observable, ${rxjsOperators.join(", ")} } from 'rxjs';`,
     "",
     `@Injectable({ providedIn: 'root' })`,
-    `export class ${serviceName} {`,
+    `export class ${serviceName}${extendsBaseApi ? " extends BaseApiService" : ""} {`,
     `  private readonly baseUrl = '${baseUrl}';`,
-    ...dependencyLines,
+    ...buildDependencyLines(config, {
+      extendsBaseApi,
+      usesLogger,
+      usesMapper
+    }),
     "",
-    signalState,
+    buildSignalState(config, modelType, versionProfile.version),
     `  list(): Observable<${modelType}[]> {`,
-    "    return this.http.get<" + modelType + "[]>(this.baseUrl)" + buildCatchError("load " + resourceLabel) + ";",
+    `    return ${buildListExpression(modelType, resourceLabel, usesMapper)};`,
     "  }",
     "",
     `  getById(id: string): Observable<${modelType}> {`,
-    "    return this.http.get<" + modelType + ">(`${this.baseUrl}/${id}`)" + buildCatchError("load " + resourceLabel + " by id") + ";",
+    `    return ${buildGetByIdExpression(modelType, resourceLabel, usesMapper, extendsBaseApi)};`,
     "  }",
     "",
     `  create(payload: ${modelType}): Observable<${modelType}> {`,
-    "    return this.http.post<" + modelType + ">(this.baseUrl, payload)" + buildCatchError("create " + resourceLabel) + ";",
+    `    return ${buildMutationExpression("post", modelType, resourceLabel, usesMapper, extendsBaseApi)};`,
     "  }",
     "",
     `  update(id: string, payload: ${modelType}): Observable<${modelType}> {`,
-    "    return this.http.put<" + modelType + ">(`${this.baseUrl}/${id}`, payload)" + buildCatchError("update " + resourceLabel) + ";",
+    `    return ${buildMutationExpression("put", modelType, resourceLabel, usesMapper, extendsBaseApi)};`,
     "  }",
     "",
     "  delete(id: string): Observable<void> {",
-    "    return this.http.delete<void>(`${this.baseUrl}/${id}`)" + buildCatchError("delete " + resourceLabel) + ";",
+    `    return ${buildDeleteExpression(resourceLabel, extendsBaseApi)};`,
     "  }",
     "",
-    errorHelpers,
+    buildErrorHelpers(config),
     "}"
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-function buildDependencyLines(config: EngineConfig): string[] {
+function buildSignalState(config: EngineConfig, modelType: string, angularVersion: string): string {
+  if (!config.serviceUseSignals) {
+    return "";
+  }
+
+  return [
+    "  private readonly _items = signal<" + modelType + "[]>([]);",
+    "  readonly items = this._items.asReadonly();",
+    "  private readonly _loading = signal(false);",
+    "  readonly loading = this._loading.asReadonly();",
+    "  // Stable signal store for Angular " + angularVersion + " without relying on experimental resource APIs.",
+    "",
+    "  loadAll(): void {",
+    "    this._loading.set(true);",
+    "    this.list().subscribe({",
+    "      next: (items) => this._items.set(items),",
+    "      complete: () => this._loading.set(false),",
+    "      error: () => this._loading.set(false)",
+    "    });",
+    "  }",
+    ""
+  ].join("\n");
+}
+
+function buildDependencyLines(
+  config: EngineConfig,
+  features: { extendsBaseApi: boolean; usesLogger: boolean; usesMapper: boolean }
+): string[] {
+  if (features.extendsBaseApi) {
+    const constructorArgs: string[] = [];
+
+    if (features.usesLogger) {
+      constructorArgs.push("private readonly logger: LoggerService");
+    }
+    if (features.usesMapper) {
+      constructorArgs.push("private readonly mapper: MappingService");
+    }
+
+    if (config.injectionStyle === "inject") {
+      const lines = ["  constructor() {", "    super(inject(HttpClient));", "  }"];
+      if (features.usesLogger) {
+        lines.splice(0, 0, "  private readonly logger = inject(LoggerService);");
+      }
+      if (features.usesMapper) {
+        lines.splice(features.usesLogger ? 1 : 0, 0, "  private readonly mapper = inject(MappingService);");
+      }
+      return lines;
+    }
+
+    return [`  constructor(http: HttpClient${constructorArgs.length ? `, ${constructorArgs.join(", ")}` : ""}) {`, "    super(http);", "  }"];
+  }
+
   if (config.injectionStyle === "inject") {
     const dependencies = ["  private readonly http = inject(HttpClient);"];
-    if (config.serviceErrorHandling === "loggerService") {
+    if (features.usesLogger) {
       dependencies.push("  private readonly logger = inject(LoggerService);");
+    }
+    if (features.usesMapper) {
+      dependencies.push("  private readonly mapper = inject(MappingService);");
     }
     return dependencies;
   }
 
-  if (config.serviceErrorHandling === "loggerService") {
-    return ["  constructor(private readonly http: HttpClient, private readonly logger: LoggerService) {}"];
+  const constructorArgs = ["private readonly http: HttpClient"];
+  if (features.usesLogger) {
+    constructorArgs.push("private readonly logger: LoggerService");
+  }
+  if (features.usesMapper) {
+    constructorArgs.push("private readonly mapper: MappingService");
   }
 
-  return ["  constructor(private readonly http: HttpClient) {}"];
+  return [`  constructor(${constructorArgs.join(", ")}) {}`];
 }
 
-function buildImportLines(config: EngineConfig): string[] {
-  const lines = ["import { HttpClient } from '@angular/common/http';"];
+function buildListExpression(modelType: string, resourceLabel: string, usesMapper: boolean): string {
+  const source = `this.http.get<${usesMapper ? "unknown[]" : `${modelType}[]`}>(this.baseUrl)`;
+  return withPipes(source, [
+    usesMapper ? `map((items) => this.mapper.mapArray(items, (item) => item as ${modelType}))` : "",
+    buildCatchError("load " + resourceLabel)
+  ]);
+}
 
-  if (config.serviceErrorHandling === "loggerService") {
-    lines.push("import { LoggerService } from './logger.service';");
+function buildGetByIdExpression(
+  modelType: string,
+  resourceLabel: string,
+  usesMapper: boolean,
+  extendsBaseApi: boolean
+): string {
+  const url = extendsBaseApi ? "this.buildUrl(this.baseUrl, id)" : "`${this.baseUrl}/${id}`";
+  const source = `this.http.get<${usesMapper ? "unknown" : modelType}>(${url})`;
+  return withPipes(source, [
+    usesMapper ? `map((item) => this.mapper.mapItem(item, (value) => value as ${modelType}))` : "",
+    buildCatchError("load " + resourceLabel + " by id")
+  ]);
+}
+
+function buildMutationExpression(
+  method: "post" | "put",
+  modelType: string,
+  resourceLabel: string,
+  usesMapper: boolean,
+  extendsBaseApi: boolean
+): string {
+  const url = method === "post" ? "this.baseUrl" : extendsBaseApi ? "this.buildUrl(this.baseUrl, id)" : "`${this.baseUrl}/${id}`";
+  const source =
+    method === "post"
+      ? `this.http.post<${usesMapper ? "unknown" : modelType}>(${url}, payload)`
+      : `this.http.put<${usesMapper ? "unknown" : modelType}>(${url}, payload)`;
+
+  return withPipes(source, [
+    usesMapper ? `map((item) => this.mapper.mapItem(item, (value) => value as ${modelType}))` : "",
+    buildCatchError((method === "post" ? "create " : "update ") + resourceLabel)
+  ]);
+}
+
+function buildDeleteExpression(resourceLabel: string, extendsBaseApi: boolean): string {
+  const url = extendsBaseApi ? "this.buildUrl(this.baseUrl, id)" : "`${this.baseUrl}/${id}`";
+  return withPipes(`this.http.delete<void>(${url})`, [buildCatchError("delete " + resourceLabel)]);
+}
+
+function withPipes(source: string, operations: string[]): string {
+  const steps = operations.filter(Boolean);
+  if (steps.length === 0) {
+    return source;
   }
-
-  lines.push("import { Observable, catchError, throwError } from 'rxjs';");
-  return lines;
+  return `${source}.pipe(${steps.join(", ")})`;
 }
 
 function buildCatchError(operation: string): string {
-  return `.pipe(catchError(this.handleError('${operation}')))`;
+  return `catchError(this.handleError('${operation}'))`;
 }
 
 function buildErrorHelpers(config: EngineConfig): string {
@@ -129,5 +254,63 @@ function buildErrorHelpers(config: EngineConfig): string {
     "      return throwError(() => new Error(`Failed to ${operation}.`));",
     "    };",
     "  }"
+  ].join("\n");
+}
+
+function renderBaseApiService(config: EngineConfig): string {
+  if (!config.serviceDependencies.includes("baseApiService") && !config.serviceExtendsBaseApi) {
+    return "";
+  }
+
+  return [
+    "// Support service: Base API",
+    "@Injectable({ providedIn: 'root' })",
+    "export abstract class BaseApiService {",
+    "  protected constructor(protected readonly http: HttpClient) {}",
+    "",
+    "  protected buildUrl(resource: string, id?: string): string {",
+    "    return id ? `${resource}/${id}` : resource;",
+    "  }",
+    "}"
+  ].join("\n");
+}
+
+function renderLoggerService(config: EngineConfig): string {
+  if (config.serviceErrorHandling !== "loggerService" && !config.serviceDependencies.includes("logService")) {
+    return "";
+  }
+
+  return [
+    "// Support service: Logs",
+    "@Injectable({ providedIn: 'root' })",
+    "export class LoggerService {",
+    "  error(message: string, error?: unknown): void {",
+    "    console.error(`[ContractFlow] ${message}`, error);",
+    "  }",
+    "",
+    "  info(message: string, payload?: unknown): void {",
+    "    console.info(`[ContractFlow] ${message}`, payload);",
+    "  }",
+    "}"
+  ].join("\n");
+}
+
+function renderMappingService(config: EngineConfig): string {
+  if (!config.serviceDependencies.includes("mappingService")) {
+    return "";
+  }
+
+  return [
+    "// Support service: Mapping",
+    "@Injectable({ providedIn: 'root' })",
+    "export class MappingService {",
+    "  mapArray<TInput, TOutput>(items: TInput[], projector: (item: TInput) => TOutput): TOutput[] {",
+    "    return items.map(projector);",
+    "  }",
+    "",
+    "  mapItem<TInput, TOutput>(item: TInput, projector: (value: TInput) => TOutput): TOutput {",
+    "    return projector(item);",
+    "  }",
+    "}"
   ].join("\n");
 }
