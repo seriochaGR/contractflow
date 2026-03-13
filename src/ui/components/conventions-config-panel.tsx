@@ -33,6 +33,7 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
   const conventions = [
     { icon: Sparkles, label: `Prefix: ${config.modelPrefix || "(none)"}` },
     { icon: Code2, label: `TS ${config.tsOutputKind}` },
+    { icon: Code2, label: `Angular ${config.angularVersion}` },
     { icon: DatabaseZap, label: `Date -> ${config.dateMapping}` },
     { icon: Settings2, label: `Inject ${config.injectionStyle}` },
     { icon: Settings2, label: `Errors ${config.serviceErrorHandling}` },

@@ -1,5 +1,6 @@
 import { EngineConfig, ModelSpec } from "@/domain/types";
 import { toKebabCase, toPascalCase } from "@/domain/naming";
+import { buildCompatibilityBanner, getAngularVersionProfile } from "@/domain/angular-target";
 
 export function generateAngularService(models: ModelSpec[], config: EngineConfig): string {
   if (models.length === 0) {
@@ -12,6 +13,7 @@ export function generateAngularService(models: ModelSpec[], config: EngineConfig
   const serviceName = `${toPascalCase(cleanName)}${config.serviceSuffix}`;
   const resource = toKebabCase(cleanName || rootModel.name);
   const resourceLabel = resource.replace(/-/g, " ");
+  const versionProfile = getAngularVersionProfile(config.angularVersion);
   const baseUrl = config.apiUrlPattern
     .replace("{resource}", resource)
     .replace("{model}", toKebabCase(rootModel.name));
@@ -26,6 +28,7 @@ export function generateAngularService(models: ModelSpec[], config: EngineConfig
         "  readonly items = this._items.asReadonly();",
         "  private readonly _loading = signal(false);",
         "  readonly loading = this._loading.asReadonly();",
+        "  // Stable signal store for Angular " + versionProfile.version + " without relying on experimental resource APIs.",
         "",
         "  loadAll(): void {",
         "    this._loading.set(true);",
@@ -40,6 +43,7 @@ export function generateAngularService(models: ModelSpec[], config: EngineConfig
     : "";
 
   return [
+    buildCompatibilityBanner(config.angularVersion, "service"),
     `import { Injectable${signalImports}${config.injectionStyle === "inject" ? ", inject" : ""} } from '@angular/core';`,
     ...importLines,
     "",

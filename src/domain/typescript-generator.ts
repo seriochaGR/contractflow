@@ -1,9 +1,12 @@
 import { EngineConfig, ModelSpec, TsOutputKind } from "@/domain/types";
 import { toCamelCase } from "@/domain/naming";
+import { buildCompatibilityBanner } from "@/domain/angular-target";
 
 export function generateTypescript(models: ModelSpec[], config: EngineConfig): string {
   const modelNames = new Set(models.map((model) => model.name));
-  return models.map((model) => renderModel(model, config, modelNames)).join("\n\n");
+  return [buildCompatibilityBanner(config.angularVersion, "contracts"), models.map((model) => renderModel(model, config, modelNames)).join("\n\n")]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function renderModel(model: ModelSpec, config: EngineConfig, modelNames: Set<string>): string {

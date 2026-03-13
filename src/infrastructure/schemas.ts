@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ANGULAR_VERSIONS } from "@/domain/angular-target";
 
 export const engineConfigSchema = z
   .object({
@@ -7,6 +8,7 @@ export const engineConfigSchema = z
     dateMapping: z.enum(["string", "Date"]).default("string"),
     nullableAsUnion: z.boolean().default(true),
     camelCaseProperties: z.boolean().default(true),
+    angularVersion: z.enum(ANGULAR_VERSIONS).default("21"),
     injectionStyle: z.enum(["inject", "constructor"]).default("inject"),
     serviceUseSignals: z.boolean().default(true),
     serviceErrorHandling: z.enum(["catchError", "loggerService"]).default("catchError"),

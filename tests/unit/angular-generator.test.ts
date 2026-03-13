@@ -16,16 +16,19 @@ describe("Angular service generator", () => {
   test("supports inject() + signals", () => {
     const service = generateService(models, {
       modelPrefix: "I",
+      angularVersion: "21",
       injectionStyle: "inject",
       serviceUseSignals: true,
       serviceErrorHandling: "catchError"
     });
 
     expect(service).toContain("inject(HttpClient)");
+    expect(service).toContain("// Target: Angular 21 (21.0.x)");
     expect(service).toContain("private readonly _items = signal<IUserDto[]>([])");
     expect(service).toContain("readonly items = this._items.asReadonly()");
     expect(service).toContain("private readonly _loading = signal(false)");
     expect(service).toContain("readonly loading = this._loading.asReadonly()");
+    expect(service).toContain("Stable signal store for Angular 21");
     expect(service).toContain("import { Observable, catchError, throwError } from 'rxjs';");
     expect(service).toContain(".pipe(catchError(this.handleError('load user')))");
     expect(service).toContain("return throwError(() => new Error(`Failed to ${operation}.`));");
@@ -35,6 +38,7 @@ describe("Angular service generator", () => {
   test("supports constructor injection", () => {
     const service = generateService(models, {
       modelPrefix: "I",
+      angularVersion: "18",
       injectionStyle: "constructor",
       serviceUseSignals: false,
       serviceErrorHandling: "catchError"
@@ -48,6 +52,7 @@ describe("Angular service generator", () => {
   test("supports LoggerService error handling", () => {
     const service = generateService(models, {
       modelPrefix: "I",
+      angularVersion: "20",
       injectionStyle: "inject",
       serviceUseSignals: false,
       serviceErrorHandling: "loggerService"

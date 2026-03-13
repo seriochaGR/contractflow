@@ -10,6 +10,7 @@ import {
   SettingsPopoverPanel,
   SettingsTab
 } from "@/ui/components/conventions-config-panel";
+import { useProjectConfig } from "@/ui/providers/project-config-provider";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -48,6 +49,7 @@ const editorOptions = {
 };
 
 export function ContractFlowWorkbench() {
+  const { angularVersion } = useProjectConfig();
   const [sourceType, setSourceType] = useState<SourceType>("csharp");
   const [input, setInput] = useState(EXAMPLES.csharp);
   const [rootModelName, setRootModelName] = useState("RootModel");
@@ -62,6 +64,10 @@ export function ContractFlowWorkbench() {
   );
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setConfig((prev) => (prev.angularVersion === angularVersion ? prev : { ...prev, angularVersion }));
+  }, [angularVersion]);
 
   useEffect(() => {
     if (!notification || notification.kind !== "success") return;

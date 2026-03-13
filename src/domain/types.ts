@@ -1,8 +1,11 @@
+import type { AngularVersion } from "@/domain/angular-target";
+
 export type SourceType = "csharp" | "json";
 export type TsOutputKind = "interface" | "type" | "class";
 export type DateMapping = "string" | "Date";
 export type InjectionStyle = "inject" | "constructor";
 export type ServiceErrorHandling = "catchError" | "loggerService";
+export type { AngularVersion } from "@/domain/angular-target";
 
 export interface PropertySpec {
   name: string;
@@ -22,6 +25,7 @@ export interface EngineConfig {
   dateMapping: DateMapping;
   nullableAsUnion: boolean;
   camelCaseProperties: boolean;
+  angularVersion: AngularVersion;
   injectionStyle: InjectionStyle;
   serviceUseSignals: boolean;
   serviceErrorHandling: ServiceErrorHandling;
@@ -50,6 +54,7 @@ export const defaultEngineConfig: EngineConfig = {
   dateMapping: "string",
   nullableAsUnion: true,
   camelCaseProperties: true,
+  angularVersion: "21",
   injectionStyle: "inject",
   serviceUseSignals: true,
   serviceErrorHandling: "catchError",
