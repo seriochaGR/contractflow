@@ -76,13 +76,37 @@ describe("Angular service generator", () => {
     });
 
     expect(service).toContain("export class UserService extends BaseApiService");
-    expect(service).toContain("super(http);");
+    expect(service).toContain("private readonly endpoint = 'api/user';");
     expect(service).toContain("private readonly logger: LoggerService");
     expect(service).toContain("private readonly mapper: MappingService");
-    expect(service).toContain("this.buildUrl(this.baseUrl, id)");
-    expect(service).toContain("export abstract class BaseApiService");
+    expect(service).toContain("this.get<unknown[]>(this.endpoint)");
+    expect(service).toContain("this.get<unknown>(this.buildUrl(this.endpoint, id))");
+    expect(service).toContain("this.post<unknown>(this.endpoint, payload)");
+    expect(service).toContain("this.put<unknown>(this.buildUrl(this.endpoint, id), payload)");
+    expect(service).toContain("this.delete<void>(this.buildUrl(this.endpoint, id))");
+    expect(service).toContain("export class BaseApiService");
     expect(service).toContain("export class LoggerService");
     expect(service).toContain("export class MappingService");
     expect(service).toContain("map((items) => this.mapper.mapArray(items, (item) => item as IUserDto))");
+  });
+
+  test("generates a richer BaseApiService template", () => {
+    const service = generateService(models, {
+      modelPrefix: "I",
+      angularVersion: "21",
+      injectionStyle: "inject",
+      serviceUseSignals: false,
+      serviceErrorHandling: "catchError",
+      serviceDependencies: ["baseApiService"]
+    });
+
+    expect(service).toContain("import { HttpClient, HttpHeaders } from '@angular/common/http';");
+    expect(service).toContain("private readonly baseUrl = 'https://api.ejemplo.com';");
+    expect(service).toContain("protected readonly http = inject(HttpClient);");
+    expect(service).toContain("get<T>(endpoint: string, headers?: HttpHeaders): Observable<T>");
+    expect(service).toContain("post<T>(endpoint: string, body: unknown, headers?: HttpHeaders): Observable<T>");
+    expect(service).toContain("put<T>(endpoint: string, body: unknown, headers?: HttpHeaders): Observable<T>");
+    expect(service).toContain("patch<T>(endpoint: string, body: unknown, headers?: HttpHeaders): Observable<T>");
+    expect(service).toContain("delete<T>(endpoint: string, headers?: HttpHeaders): Observable<T>");
   });
 });
