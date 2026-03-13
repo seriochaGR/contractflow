@@ -2,6 +2,7 @@ export type SourceType = "csharp" | "json";
 export type TsOutputKind = "interface" | "type" | "class";
 export type DateMapping = "string" | "Date";
 export type InjectionStyle = "inject" | "constructor";
+export type ServiceErrorHandling = "catchError" | "loggerService";
 
 export interface PropertySpec {
   name: string;
@@ -23,6 +24,7 @@ export interface EngineConfig {
   camelCaseProperties: boolean;
   injectionStyle: InjectionStyle;
   serviceUseSignals: boolean;
+  serviceErrorHandling: ServiceErrorHandling;
   apiUrlPattern: string;
   serviceSuffix: string;
   enableContracts: boolean;
@@ -50,6 +52,7 @@ export const defaultEngineConfig: EngineConfig = {
   camelCaseProperties: true,
   injectionStyle: "inject",
   serviceUseSignals: true,
+  serviceErrorHandling: "catchError",
   apiUrlPattern: "/api/{resource}",
   serviceSuffix: "Service",
   enableContracts: true,

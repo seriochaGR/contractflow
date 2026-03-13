@@ -35,6 +35,7 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
     { icon: Code2, label: `TS ${config.tsOutputKind}` },
     { icon: DatabaseZap, label: `Date -> ${config.dateMapping}` },
     { icon: Settings2, label: `Inject ${config.injectionStyle}` },
+    { icon: Settings2, label: `Errors ${config.serviceErrorHandling}` },
     { icon: FlaskConical, label: `Enabled: ${enabledSections || "none"}` }
   ];
 
@@ -233,6 +234,18 @@ export function SettingsPopoverPanel({
                   onChange={(event) => onUpdateConfig("serviceSuffix", event.target.value)}
                   className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
                 />
+              </Field>
+              <Field label="Error Handling">
+                <select
+                  value={config.serviceErrorHandling}
+                  onChange={(event) =>
+                    onUpdateConfig("serviceErrorHandling", event.target.value as EngineConfig["serviceErrorHandling"])
+                  }
+                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+                >
+                  <option value="catchError">CatchError</option>
+                  <option value="loggerService">LoggerService</option>
+                </select>
               </Field>
             </div>
             <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">

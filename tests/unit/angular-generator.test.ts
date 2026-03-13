@@ -17,11 +17,18 @@ describe("Angular service generator", () => {
     const service = generateService(models, {
       modelPrefix: "I",
       injectionStyle: "inject",
-      serviceUseSignals: true
+      serviceUseSignals: true,
+      serviceErrorHandling: "catchError"
     });
 
     expect(service).toContain("inject(HttpClient)");
-    expect(service).toContain("signal<IUserDto[]>([])");
+    expect(service).toContain("private readonly _items = signal<IUserDto[]>([])");
+    expect(service).toContain("readonly items = this._items.asReadonly()");
+    expect(service).toContain("private readonly _loading = signal(false)");
+    expect(service).toContain("readonly loading = this._loading.asReadonly()");
+    expect(service).toContain("import { Observable, catchError, throwError } from 'rxjs';");
+    expect(service).toContain(".pipe(catchError(this.handleError('load user')))");
+    expect(service).toContain("return throwError(() => new Error(`Failed to ${operation}.`));");
     expect(service).toContain("list(): Observable<IUserDto[]>");
   });
 
@@ -29,10 +36,26 @@ describe("Angular service generator", () => {
     const service = generateService(models, {
       modelPrefix: "I",
       injectionStyle: "constructor",
-      serviceUseSignals: false
+      serviceUseSignals: false,
+      serviceErrorHandling: "catchError"
     });
 
     expect(service).toContain("constructor(private readonly http: HttpClient) {}");
     expect(service).not.toContain("signal<");
+    expect(service).not.toContain("LoggerService");
+  });
+
+  test("supports LoggerService error handling", () => {
+    const service = generateService(models, {
+      modelPrefix: "I",
+      injectionStyle: "inject",
+      serviceUseSignals: false,
+      serviceErrorHandling: "loggerService"
+    });
+
+    expect(service).toContain("import { LoggerService } from './logger.service';");
+    expect(service).toContain("private readonly logger = inject(LoggerService);");
+    expect(service).toContain("this.logger.error(`Failed to ${operation}.`, error);");
+    expect(service).toContain(".pipe(catchError(this.handleError('create user')))");
   });
 });
