@@ -2,9 +2,17 @@ import { buildCompatibilityBanner, getAngularVersionProfile } from "@/domain/ang
 import { toKebabCase, toPascalCase } from "@/domain/naming";
 import { EngineConfig, ModelSpec } from "@/domain/types";
 
-export function generateAngularService(models: ModelSpec[], config: EngineConfig): string {
+export interface AngularServiceArtifacts {
+  service: string;
+  dependencies: string;
+}
+
+export function generateAngularArtifacts(models: ModelSpec[], config: EngineConfig): AngularServiceArtifacts {
   if (models.length === 0) {
-    return "// No models available for service generation.";
+    return {
+      service: "// No models available for service generation.",
+      dependencies: ""
+    };
   }
 
   const rootModel = models[0];
@@ -18,21 +26,29 @@ export function generateAngularService(models: ModelSpec[], config: EngineConfig
     .replace("{resource}", resource)
     .replace("{model}", toKebabCase(rootModel.name));
 
-  const sections = [
-    renderMainService({
+  const service = renderMainService({
       baseUrl,
       config,
       modelType,
       resourceLabel,
       serviceName,
       versionProfile
-    }),
+    });
+  const dependencies = [
     renderBaseApiService(config),
     renderLoggerService(config),
     renderMappingService(config)
   ].filter(Boolean);
 
-  return sections.join("\n\n");
+  return {
+    service,
+    dependencies: dependencies.join("\n\n")
+  };
+}
+
+export function generateAngularService(models: ModelSpec[], config: EngineConfig): string {
+  const artifacts = generateAngularArtifacts(models, config);
+  return [artifacts.service, artifacts.dependencies].filter(Boolean).join("\n\n");
 }
 
 function renderMainService({

@@ -17,10 +17,11 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false 
 interface EngineResponse {
   typescript: string;
   angularService: string;
+  angularServiceDependencies: string;
   jsonMocks: string;
 }
 
-type OutputTab = "typescript" | "service" | "mocks";
+type OutputTab = "typescript" | "service" | "serviceDependencies" | "mocks";
 
 const EXAMPLES = {
   csharp: `public class UserDto
@@ -87,6 +88,7 @@ export function ContractFlowWorkbench() {
     const tabs: OutputTab[] = [];
     if (config.enableContracts) tabs.push("typescript");
     if (config.enableServices) tabs.push("service");
+    if (config.enableServices) tabs.push("serviceDependencies");
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
   }, [config.enableContracts, config.enableServices, config.enableMocks]);
@@ -102,6 +104,12 @@ export function ContractFlowWorkbench() {
         {
           key: "service" as OutputTab,
           label: "Angular Service",
+          icon: <Code2 className="h-4 w-4" />,
+          enabled: config.enableServices
+        },
+        {
+          key: "serviceDependencies" as OutputTab,
+          label: "Service Dependencies",
           icon: <Code2 className="h-4 w-4" />,
           enabled: config.enableServices
         },
@@ -143,7 +151,9 @@ export function ContractFlowWorkbench() {
         ? output?.typescript ?? "// TypeScript output"
         : outputTab === "service"
           ? output?.angularService ?? "// Angular service output"
-          : output?.jsonMocks ?? "// JSON mocks output";
+          : outputTab === "serviceDependencies"
+            ? output?.angularServiceDependencies ?? "// Angular service dependencies output"
+            : output?.jsonMocks ?? "// JSON mocks output";
   const outputLanguage = outputTab === "mocks" ? "json" : "typescript";
   const inputLanguage = sourceType === "json" ? "json" : "csharp";
 
@@ -168,6 +178,7 @@ export function ContractFlowWorkbench() {
       setOutput({
         typescript: payload.typescript,
         angularService: payload.angularService,
+        angularServiceDependencies: payload.angularServiceDependencies,
         jsonMocks: payload.jsonMocks
       });
       const enabledNames = [

@@ -1,4 +1,4 @@
-import { generateAngularService } from "@/domain/angular-service-generator";
+import { generateAngularArtifacts, generateAngularService } from "@/domain/angular-service-generator";
 import { parseCSharpModels } from "@/domain/csharp-parser";
 import { parseJsonModels } from "@/domain/json-parser";
 import { generateJsonMocks } from "@/domain/mock-generator";
@@ -7,6 +7,7 @@ import { generateTypescript } from "@/domain/typescript-generator";
 
 export interface EngineOutput extends ConvertResult {
   angularService: string;
+  angularServiceDependencies: string;
   jsonMocks: string;
   config: EngineConfig;
 }
@@ -26,11 +27,14 @@ export function convertInput(request: ConvertRequest): ConvertResult {
 export function generateArtifacts(request: ConvertRequest): EngineOutput {
   const config = withDefaults(request.config);
   const conversion = convertInput({ ...request, config });
-  const angularService = config.enableServices ? generateAngularService(conversion.models, config) : "";
+  const angularArtifacts = config.enableServices
+    ? generateAngularArtifacts(conversion.models, config)
+    : { service: "", dependencies: "" };
   const jsonMocks = config.enableMocks ? generateJsonMocks(conversion.models) : "";
   return {
     ...conversion,
-    angularService,
+    angularService: angularArtifacts.service,
+    angularServiceDependencies: angularArtifacts.dependencies,
     jsonMocks,
     config
   };
