@@ -8,6 +8,7 @@ import { generateTypescript } from "@/domain/typescript-generator";
 export interface EngineOutput extends ConvertResult {
   angularService: string;
   angularServiceDependencies: string;
+  angularMockService: string;
   jsonMocks: string;
   config: EngineConfig;
 }
@@ -29,12 +30,13 @@ export function generateArtifacts(request: ConvertRequest): EngineOutput {
   const conversion = convertInput({ ...request, config });
   const angularArtifacts = config.enableServices
     ? generateAngularArtifacts(conversion.models, config)
-    : { service: "", dependencies: "" };
+    : { service: "", dependencies: "", mockService: "" };
   const jsonMocks = config.enableMocks ? generateJsonMocks(conversion.models) : "";
   return {
     ...conversion,
     angularService: angularArtifacts.service,
     angularServiceDependencies: angularArtifacts.dependencies,
+    angularMockService: angularArtifacts.mockService,
     jsonMocks,
     config
   };
@@ -42,6 +44,10 @@ export function generateArtifacts(request: ConvertRequest): EngineOutput {
 
 export function generateService(models: ModelSpec[], config?: Partial<EngineConfig>): string {
   return generateAngularService(models, withDefaults(config));
+}
+
+export function generateMockService(models: ModelSpec[], config?: Partial<EngineConfig>): string {
+  return generateAngularArtifacts(models, withDefaults(config)).mockService;
 }
 
 export function generateMocks(models: ModelSpec[]): string {

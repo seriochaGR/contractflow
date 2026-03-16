@@ -1,17 +1,20 @@
 import { buildCompatibilityBanner, getAngularVersionProfile } from "@/domain/angular-target";
+import { generateAngularMockService } from "@/domain/angular-mock-service-generator";
 import { splitTopLevel, toCamelCase, toKebabCase, toPascalCase } from "@/domain/naming";
 import { EngineConfig, ModelSpec } from "@/domain/types";
 
 export interface AngularServiceArtifacts {
   service: string;
   dependencies: string;
+  mockService: string;
 }
 
 export function generateAngularArtifacts(models: ModelSpec[], config: EngineConfig): AngularServiceArtifacts {
   if (models.length === 0) {
     return {
       service: "// No models available for service generation.",
-      dependencies: ""
+      dependencies: "",
+      mockService: ""
     };
   }
 
@@ -40,10 +43,12 @@ export function generateAngularArtifacts(models: ModelSpec[], config: EngineConf
     versionProfile
   });
   const dependencies = renderSupportServices(config, models, modelMap, modelNames, rootModel, modelType);
+  const mockService = generateAngularMockService(models, config);
 
   return {
     service,
-    dependencies
+    dependencies,
+    mockService
   };
 }
 
@@ -752,3 +757,6 @@ function withKnownModelPrefixes(type: string, modelNames: Set<string>): string {
 
   return result;
 }
+
+
+

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { generateService } from "@/application/engine";
+import { generateMockService, generateService } from "@/application/engine";
 import { ModelSpec } from "@/domain/types";
 
 const models: ModelSpec[] = [
@@ -178,5 +178,23 @@ describe("Angular service generator", () => {
     expect(service).toContain("items: Array.isArray(value['items']) ? value['items'].map((item) => this.mapRole(item)) : []");
     expect(service).toContain("data: value['data'] == null ? null : this.mapRole(value['data'])");
     expect(service).toContain("map((items) => this.mapper.mapUserArray(items))");
+  });
+
+  test("generates an in-memory Angular mock service", () => {
+    const mockService = generateMockService(models, {
+      modelPrefix: "I",
+      angularVersion: "21",
+      camelCaseProperties: true
+    });
+
+    expect(mockService).toContain("export class UserMockService");
+    expect(mockService).toContain("private readonly store = new BehaviorSubject<IUserDto[]>");
+    expect(mockService).toContain("readonly items$ = this.store.asObservable()");
+    expect(mockService).toContain("create(payload: IUserDto): Observable<IUserDto>");
+    expect(mockService).toContain("delete(id: string): Observable<void>");
+    expect(mockService).toContain("reset(items: IUserDto[] = this.initialItems): void");
+    expect(mockService).toContain("this.store.next([...this.store.value, nextItem]);");
+    expect(mockService).toContain("this.store.value.filter((item) => this.getItemId(item) !== id)");
+    expect(mockService).toContain("private readonly idKey: string | null = 'id';");
   });
 });

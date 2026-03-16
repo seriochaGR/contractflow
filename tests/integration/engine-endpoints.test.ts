@@ -43,6 +43,8 @@ describe("Engine API endpoints", () => {
     expect(payload.typescript).toContain("export interface IRecordDto");
     expect(payload.angularService).toContain("list(): Observable<IRecordDto[]>");
     expect(payload.angularServiceDependencies).toBeDefined();
+    expect(payload.angularMockService).toContain("export class RecordMockService");
+    expect(payload.angularMockService).toContain("create(payload: IRecordDto): Observable<IRecordDto>");
     expect(payload.jsonMocks).toContain("\"RecordDto\"");
   });
 });

@@ -1,4 +1,4 @@
-import { generateService } from "@/application/engine";
+import { generateMockService, generateService } from "@/application/engine";
 import { serviceSchema } from "@/infrastructure/schemas";
 import { NextResponse } from "next/server";
 
@@ -14,5 +14,6 @@ export async function POST(request: Request) {
   }
 
   const service = generateService(parsed.data.models, parsed.data.config);
-  return NextResponse.json({ service });
+  const mockService = generateMockService(parsed.data.models, parsed.data.config);
+  return NextResponse.json({ service, mockService });
 }

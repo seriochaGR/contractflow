@@ -18,10 +18,11 @@ interface EngineResponse {
   typescript: string;
   angularService: string;
   angularServiceDependencies: string;
+  angularMockService: string;
   jsonMocks: string;
 }
 
-type OutputTab = "typescript" | "service" | "serviceDependencies" | "mocks";
+type OutputTab = "typescript" | "service" | "serviceDependencies" | "serviceMock" | "mocks";
 
 const EXAMPLES = {
   csharp: `public class UserDto
@@ -89,6 +90,7 @@ export function ContractFlowWorkbench() {
     if (config.enableContracts) tabs.push("typescript");
     if (config.enableServices) tabs.push("service");
     if (config.enableServices) tabs.push("serviceDependencies");
+    if (config.enableServices) tabs.push("serviceMock");
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
   }, [config.enableContracts, config.enableServices, config.enableMocks]);
@@ -111,6 +113,12 @@ export function ContractFlowWorkbench() {
           key: "serviceDependencies" as OutputTab,
           label: "Service Dependencies",
           icon: <Code2 className="h-4 w-4" />,
+          enabled: config.enableServices
+        },
+        {
+          key: "serviceMock" as OutputTab,
+          label: "Mock Service",
+          icon: <FlaskConical className="h-4 w-4" />,
           enabled: config.enableServices
         },
         {
@@ -153,7 +161,9 @@ export function ContractFlowWorkbench() {
           ? output?.angularService ?? "// Angular service output"
           : outputTab === "serviceDependencies"
             ? output?.angularServiceDependencies ?? "// Angular service dependencies output"
-            : output?.jsonMocks ?? "// JSON mocks output";
+            : outputTab === "serviceMock"
+              ? output?.angularMockService ?? "// Angular mock service output"
+              : output?.jsonMocks ?? "// JSON mocks output";
   const outputLanguage = outputTab === "mocks" ? "json" : "typescript";
   const inputLanguage = sourceType === "json" ? "json" : "csharp";
 
@@ -179,11 +189,13 @@ export function ContractFlowWorkbench() {
         typescript: payload.typescript,
         angularService: payload.angularService,
         angularServiceDependencies: payload.angularServiceDependencies,
+        angularMockService: payload.angularMockService,
         jsonMocks: payload.jsonMocks
       });
       const enabledNames = [
         config.enableContracts ? "TypeScript contracts" : null,
         config.enableServices ? "Angular service" : null,
+        config.enableServices ? "Angular mock service" : null,
         config.enableMocks ? "JSON mocks" : null
       ].filter(Boolean);
       setNotification({
