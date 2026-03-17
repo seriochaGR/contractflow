@@ -118,6 +118,7 @@ export function ContractFlowWorkbench() {
     const tabs: SettingsTab[] = [];
     if (config.enableContracts) tabs.push("contracts");
     if (config.enableServices) tabs.push("service");
+    if (config.enableServices) tabs.push("serviceMock");
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
   }, [config.enableContracts, config.enableServices, config.enableMocks]);
@@ -424,7 +425,7 @@ function SidebarRailButton({
       onClick={onClick}
       title={label}
       aria-pressed={active}
-      className={`flex h-10 w-full items-center overflow-hidden rounded-lg border px-3 text-sm transition ${expanded ? "justify-start gap-3" : "justify-center gap-0"} ${alignBottom ? "mt-auto" : ""} ${active
+      className={`flex h-10 w-full items-center overflow-hidden rounded-lg border px-3 text-sm transition justify-center gap-0" ${active
         ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
         : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
       }`}
@@ -438,4 +439,5 @@ function SidebarRailButton({
     </button>
   );
 }
+
 

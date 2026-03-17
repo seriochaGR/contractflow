@@ -6,6 +6,7 @@ export type DateMapping = "string" | "Date";
 export type InjectionStyle = "inject" | "constructor";
 export type ServiceErrorHandling = "catchError" | "loggerService";
 export type ServiceDependencyOption = "logService" | "baseApiService" | "mappingService";
+export type OutputSettingsSection = "contracts" | "service" | "serviceMock" | "mocks";
 export type { AngularVersion } from "@/domain/angular-target";
 
 export interface PropertySpec {
@@ -34,6 +35,10 @@ export interface EngineConfig {
   serviceExtendsBaseApi: boolean;
   apiUrlPattern: string;
   serviceSuffix: string;
+  mockServiceSuffix: string;
+  mockServiceLatencyMs: number;
+  mockServiceSeedCount: number;
+  mockServiceAutoIds: boolean;
   enableContracts: boolean;
   enableServices: boolean;
   enableMocks: boolean;
@@ -65,6 +70,10 @@ export const defaultEngineConfig: EngineConfig = {
   serviceExtendsBaseApi: false,
   apiUrlPattern: "/api/{resource}",
   serviceSuffix: "Service",
+  mockServiceSuffix: "MockService",
+  mockServiceLatencyMs: 150,
+  mockServiceSeedCount: 2,
+  mockServiceAutoIds: true,
   enableContracts: true,
   enableServices: true,
   enableMocks: true

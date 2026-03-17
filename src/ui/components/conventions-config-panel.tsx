@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Braces, Check, ChevronDown, Code2, DatabaseZap, FlaskConical, Settings2, Sparkles, X } from "lucide-react";
-import { EngineConfig, ServiceDependencyOption, TsOutputKind } from "@/domain/types";
+import { EngineConfig, OutputSettingsSection, ServiceDependencyOption, TsOutputKind } from "@/domain/types";
 
 const SERVICE_DEPENDENCY_OPTIONS: Array<{ value: ServiceDependencyOption; label: string }> = [
   { value: "baseApiService", label: "Base API" },
@@ -9,7 +9,7 @@ const SERVICE_DEPENDENCY_OPTIONS: Array<{ value: ServiceDependencyOption; label:
   { value: "mappingService", label: "Mapping" }
 ];
 
-export type SettingsTab = "contracts" | "service" | "mocks";
+export type SettingsTab = OutputSettingsSection;
 
 interface ConventionsConfigPanelProps {
   config: EngineConfig;
@@ -31,11 +31,55 @@ interface SettingsPopoverPanelProps extends SettingsPanelContentProps {
   onCloseSettings: () => void;
 }
 
+interface SettingsSectionDefinition {
+  key: SettingsTab;
+  label: string;
+  buttonLabel: string;
+  icon: ReactNode;
+  enabled: (config: EngineConfig) => boolean;
+  helperText: string;
+}
+
+const SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
+  {
+    key: "contracts",
+    label: "TypeScript Contracts",
+    buttonLabel: "TypeScript Contracts",
+    icon: <Braces className="h-4 w-4" />,
+    enabled: (config) => config.enableContracts,
+    helperText: "These options affect generated TypeScript models and also influence service and mock outputs via model shape."
+  },
+  {
+    key: "service",
+    label: "Angular Service",
+    buttonLabel: "Angular Service",
+    icon: <Code2 className="h-4 w-4" />,
+    enabled: (config) => config.enableServices,
+    helperText: "These options affect Angular service generation only."
+  },
+  {
+    key: "serviceMock",
+    label: "Mock Service",
+    buttonLabel: "Mock Service",
+    icon: <FlaskConical className="h-4 w-4" />,
+    enabled: (config) => config.enableServices,
+    helperText: "Configure the in-memory Angular mock service independently from the live service output."
+  },
+  {
+    key: "mocks",
+    label: "JSON Mocks",
+    buttonLabel: "JSON Mocks",
+    icon: <FlaskConical className="h-4 w-4" />,
+    enabled: (config) => config.enableMocks,
+    helperText: "Mocks are inferred from generated contracts. Adjust contract settings to influence mock structure."
+  }
+];
+
 export function ConventionsConfigPanel({ config, notification }: ConventionsConfigPanelProps) {
   const enabledSections = [
     config.enableContracts ? "contracts" : null,
-    config.enableServices ? "services" : null,
-    config.enableMocks ? "mocks" : null
+    config.enableServices ? "services + mock service" : null,
+    config.enableMocks ? "json mocks" : null
   ]
     .filter(Boolean)
     .join(", ");
@@ -50,6 +94,10 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
     {
       icon: Settings2,
       label: `Deps ${config.serviceDependencies.length ? formatDependencyLabels(config.serviceDependencies) : "none"}`
+    },
+    {
+      icon: FlaskConical,
+      label: `Mock ${config.mockServiceSuffix} • ${config.mockServiceSeedCount} seed • ${config.mockServiceLatencyMs}ms`
     },
     { icon: FlaskConical, label: `Enabled: ${enabledSections || "none"}` }
   ];
@@ -92,63 +140,42 @@ export function SettingsPanelContent({
   onSettingsTabChange,
   onUpdateConfig
 }: SettingsPanelContentProps) {
+  const availableSections = SETTINGS_SECTIONS.filter((section) => section.enabled(config));
+  const activeSection = availableSections.find((section) => section.key === settingsTab) ?? availableSections[0] ?? null;
+
   return (
     <>
       <div className="mb-3 rounded-md border border-slate-700 bg-slate-950/70 p-3">
         <p className="mb-2 text-xs text-slate-400">Enable output sections</p>
         <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-3">
-          <Toggle
-            checked={config.enableContracts}
-            onChange={(checked) => onUpdateConfig("enableContracts", checked)}
-            label="Contracts"
-          />
-          <Toggle
-            checked={config.enableServices}
-            onChange={(checked) => onUpdateConfig("enableServices", checked)}
-            label="Services"
-          />
+          <Toggle checked={config.enableContracts} onChange={(checked) => onUpdateConfig("enableContracts", checked)} label="Contracts" />
+          <Toggle checked={config.enableServices} onChange={(checked) => onUpdateConfig("enableServices", checked)} label="Services" />
           <Toggle checked={config.enableMocks} onChange={(checked) => onUpdateConfig("enableMocks", checked)} label="Mocks" />
         </div>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2">
-        {config.enableContracts ? (
+        {availableSections.map((section) => (
           <DialogTabButton
-            active={settingsTab === "contracts"}
-            onClick={() => onSettingsTabChange("contracts")}
-            icon={<Braces className="h-4 w-4" />}
-            label="TypeScript Contracts"
+            key={section.key}
+            active={activeSection?.key === section.key}
+            onClick={() => onSettingsTabChange(section.key)}
+            icon={section.icon}
+            label={section.buttonLabel}
           />
-        ) : null}
-        {config.enableServices ? (
-          <DialogTabButton
-            active={settingsTab === "service"}
-            onClick={() => onSettingsTabChange("service")}
-            icon={<Code2 className="h-4 w-4" />}
-            label="Angular Services"
-          />
-        ) : null}
-        {config.enableMocks ? (
-          <DialogTabButton
-            active={settingsTab === "mocks"}
-            onClick={() => onSettingsTabChange("mocks")}
-            icon={<FlaskConical className="h-4 w-4" />}
-            label="Mocks"
-          />
-        ) : null}
+        ))}
       </div>
 
-      {!config.enableContracts && !config.enableServices && !config.enableMocks ? (
+      {!availableSections.length ? (
         <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
           No sections are enabled. Activate at least one section above to configure and generate outputs.
         </div>
       ) : null}
 
-      {config.enableContracts && settingsTab === "contracts" ? (
+      {activeSection ? <p className="mb-3 text-xs text-slate-400">{activeSection.helperText}</p> : null}
+
+      {activeSection?.key === "contracts" ? (
         <>
-          <p className="mb-3 text-xs text-slate-400">
-            These options affect generated TypeScript models and also influence service/mocks via model shape.
-          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="Root Model (JSON input)">
               <input
@@ -201,9 +228,8 @@ export function SettingsPanelContent({
         </>
       ) : null}
 
-      {config.enableServices && settingsTab === "service" ? (
+      {activeSection?.key === "service" ? (
         <>
-          <p className="mb-3 text-xs text-slate-400">These options affect Angular service generation only.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="Injection">
               <select
@@ -275,20 +301,56 @@ export function SettingsPanelContent({
         </>
       ) : null}
 
-      {config.enableMocks && settingsTab === "mocks" ? (
+      {activeSection?.key === "serviceMock" ? (
         <>
-          <p className="mb-3 text-xs text-slate-400">
-            Mocks are inferred from generated contracts. Adjust contract settings to influence mock structure.
-          </p>
-          <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
-            No mock-specific toggles yet. Current mock output reflects:
-            <ul className="mt-2 list-disc pl-5 text-xs text-slate-400">
-              <li>Contract field names and types</li>
-              <li>Date mapping (`string` vs `Date`)</li>
-              <li>Nullable model rules</li>
-            </ul>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="Mock Service Suffix">
+              <input
+                value={config.mockServiceSuffix}
+                onChange={(event) => onUpdateConfig("mockServiceSuffix", event.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="Latency (ms)">
+              <input
+                type="number"
+                min={0}
+                max={5000}
+                value={config.mockServiceLatencyMs}
+                onChange={(event) => onUpdateConfig("mockServiceLatencyMs", Number(event.target.value || 0))}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="Seed Items">
+              <input
+                type="number"
+                min={0}
+                max={25}
+                value={config.mockServiceSeedCount}
+                onChange={(event) => onUpdateConfig("mockServiceSeedCount", Number(event.target.value || 0))}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
+            <Toggle
+              checked={config.mockServiceAutoIds}
+              onChange={(checked) => onUpdateConfig("mockServiceAutoIds", checked)}
+              label="Auto-generate ids"
+            />
           </div>
         </>
+      ) : null}
+
+      {activeSection?.key === "mocks" ? (
+        <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
+          No mock-specific toggles yet. Current mock output reflects:
+          <ul className="mt-2 list-disc pl-5 text-xs text-slate-400">
+            <li>Contract field names and types</li>
+            <li>Date mapping (`string` vs `Date`)</li>
+            <li>Nullable model rules</li>
+          </ul>
+        </div>
       ) : null}
 
       {error ? (
@@ -533,9 +595,7 @@ function MultiSelectDropdown({
                       key={option.value}
                       type="button"
                       onClick={() =>
-                        onChange(
-                          checked ? value.filter((item) => item !== option.value) : [...value, option.value]
-                        )
+                        onChange(checked ? value.filter((item) => item !== option.value) : [...value, option.value])
                       }
                       className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
                         checked

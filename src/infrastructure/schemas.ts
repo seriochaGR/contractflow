@@ -16,6 +16,10 @@ export const engineConfigSchema = z
     serviceExtendsBaseApi: z.boolean().default(false),
     apiUrlPattern: z.string().default("/api/{resource}"),
     serviceSuffix: z.string().default("Service"),
+    mockServiceSuffix: z.string().default("MockService"),
+    mockServiceLatencyMs: z.coerce.number().int().min(0).max(5000).default(150),
+    mockServiceSeedCount: z.coerce.number().int().min(0).max(25).default(2),
+    mockServiceAutoIds: z.boolean().default(true),
     enableContracts: z.boolean().default(true),
     enableServices: z.boolean().default(true),
     enableMocks: z.boolean().default(true)

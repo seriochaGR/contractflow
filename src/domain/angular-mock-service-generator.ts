@@ -12,11 +12,11 @@ export function generateAngularMockService(models: ModelSpec[], config: EngineCo
   const modelMap = new Map<string, ModelSpec>(models.map((model) => [model.name, model]));
   const cleanName = rootModel.name.replace(/(Dto|Model)$/i, "");
   const modelType = `${config.modelPrefix}${rootModel.name}`;
-  const serviceName = `${toPascalCase(cleanName)}MockService`;
+  const serviceName = `${toPascalCase(cleanName)}${config.mockServiceSuffix}`;
   const resourceLabel = toKebabCase(cleanName || rootModel.name).replace(/-/g, " ");
   const versionProfile = getAngularVersionProfile(config.angularVersion);
   const idProperty = findIdProperty(rootModel, config);
-  const initialItems = createInitialItems(rootModel.name, modelMap, config);
+  const initialItems = createInitialItems(rootModel.name, modelMap, config, config.mockServiceSeedCount);
 
   return [
     buildCompatibilityBanner(config.angularVersion, "service"),
@@ -26,7 +26,7 @@ export function generateAngularMockService(models: ModelSpec[], config: EngineCo
     "// In-memory mock service for UI and flow testing.",
     "@Injectable({ providedIn: 'root' })",
     `export class ${serviceName} {`,
-    "  private readonly latency = 150;",
+    `  private readonly latency = ${config.mockServiceLatencyMs};`,
     `  private readonly idKey: string | null = ${idProperty ? `'${idProperty}'` : "null"};`,
     `  private readonly initialItems: ${modelType}[] = ${renderTsLiteral(initialItems, 1)};`,
     `  private readonly store = new BehaviorSubject<${modelType}[]>(this.cloneItems(this.initialItems));`,
@@ -59,7 +59,7 @@ export function generateAngularMockService(models: ModelSpec[], config: EngineCo
     `      return throwError(() => new Error('Cannot update mock ${resourceLabel}: item not found.'));`,
     "    }",
     "",
-    "    const nextItem = this.assignIdIfNeeded({ ...payload, ...(this.idKey ? { [this.idKey]: id } : {}) } as " + modelType + ");",
+    `    const nextItem = this.assignIdIfNeeded({ ...payload, ...(this.idKey ? { [this.idKey]: id } : {}) } as ${modelType});`,
     "    const nextItems = [...this.store.value];",
     "    nextItems[index] = nextItem;",
     "    this.store.next(nextItems);",
@@ -89,7 +89,7 @@ export function generateAngularMockService(models: ModelSpec[], config: EngineCo
     "    this.store.next(this.cloneItems(items));",
     "  }",
     "",
-    `  private simulate<T>(value: T): Observable<T> {`,
+    "  private simulate<T>(value: T): Observable<T> {",
     "    return of(this.cloneValue(value)).pipe(delay(this.latency));",
     "  }",
     "",
@@ -97,13 +97,13 @@ export function generateAngularMockService(models: ModelSpec[], config: EngineCo
     "    return items.map((item) => this.cloneValue(item));",
     "  }",
     "",
-    `  private cloneValue<T>(value: T): T {`,
+    "  private cloneValue<T>(value: T): T {",
     "    return value === undefined ? value : structuredClone(value);",
     "  }",
     "",
     `  private assignIdIfNeeded(payload: ${modelType}): ${modelType} {`,
     "    const nextItem = this.cloneValue(payload);",
-    "    if (!this.idKey || this.getItemId(nextItem)) {",
+    `    if (${config.mockServiceAutoIds ? "!this.idKey || this.getItemId(nextItem)" : "true"}) {`,
     "      return nextItem;",
     "    }",
     "",
