@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { Braces, Check, Code2, Copy, FileCode2, FlaskConical, Settings2, Upload } from "lucide-react";
 import { defaultEngineConfig, EngineConfig, SourceType } from "@/domain/types";
+import type { UsageMetricEventName, UsageMetricOutputKey } from "@/domain/usage-metrics";
 import { AppMainHeader } from "@/ui/components/app-main-header";
 import {
   ConventionsConfigPanel,
@@ -153,6 +154,21 @@ export function ContractFlowWorkbench() {
   const outputLanguage = outputTab === "mocks" ? "json" : "typescript";
   const inputLanguage = sourceType === "json" ? "json" : "csharp";
 
+  async function trackMetric(
+    name: UsageMetricEventName,
+    details: Partial<{ sourceType: SourceType; output: UsageMetricOutputKey }> = {}
+  ) {
+    try {
+      await fetch("/api/metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, ...details })
+      });
+    } catch {
+      // Metrics must not block the main UX.
+    }
+  }
+
   async function runGeneration() {
     if (!config.enableContracts && !config.enableServices && !config.enableMocks) {
       const message = "Enable at least one output section (contracts, services, or mocks) in Settings.";
@@ -197,7 +213,10 @@ export function ContractFlowWorkbench() {
   function onUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    file.text().then((text) => setInput(text));
+    file.text().then((text) => {
+      setInput(text);
+      void trackMetric("input_uploaded", { sourceType });
+    });
   }
 
   function loadExample(nextType: SourceType) {
@@ -213,12 +232,14 @@ export function ContractFlowWorkbench() {
     if (!outputValue) return;
     await navigator.clipboard.writeText(outputValue);
     setCopied(true);
+    void trackMetric("output_copied", { output: outputTab as UsageMetricOutputKey });
   }
 
   function selectOutput(tab: OutputTab) {
     setOutputTab(tab);
     setShowSettings(false);
     setIsOutputRailExpanded(false);
+    void trackMetric("output_selected", { output: tab as UsageMetricOutputKey });
   }
 
   return (
@@ -366,7 +387,10 @@ export function ContractFlowWorkbench() {
                     </div>
                     <SidebarRailButton
                       active={false}
-                      onClick={() => setShowSettings(true)}
+                      onClick={() => {
+                        setShowSettings(true);
+                        void trackMetric("settings_opened");
+                      }}
                       icon={<Settings2 className="h-4 w-4" />}
                       label="Settings"
                       alignBottom
@@ -425,7 +449,7 @@ function SidebarRailButton({
       onClick={onClick}
       title={label}
       aria-pressed={active}
-      className={`flex h-10 w-full items-center overflow-hidden rounded-lg border px-3 text-sm transition justify-center gap-0" ${active
+      className={`flex h-10 w-full items-center overflow-hidden rounded-lg border px-3 text-sm transition ${expanded ? "justify-start gap-3" : "justify-center gap-0"} ${alignBottom ? "mt-auto" : ""} ${active
         ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
         : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
       }`}
@@ -439,5 +463,3 @@ function SidebarRailButton({
     </button>
   );
 }
-
-

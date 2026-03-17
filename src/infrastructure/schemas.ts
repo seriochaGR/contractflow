@@ -26,6 +26,19 @@ export const engineConfigSchema = z
   })
   .partial();
 
+export const usageMetricEventSchema = z.object({
+  name: z.enum([
+    "generation_succeeded",
+    "generation_failed",
+    "output_selected",
+    "settings_opened",
+    "output_copied",
+    "input_uploaded"
+  ]),
+  sourceType: z.enum(["csharp", "json"]).optional(),
+  output: z.enum(["typescript", "service", "serviceDependencies", "serviceMock", "mocks"]).optional()
+});
+
 export const convertSchema = z.object({
   sourceType: z.enum(["csharp", "json"]),
   input: z.string().min(1, "Input is required."),
