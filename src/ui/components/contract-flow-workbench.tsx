@@ -299,7 +299,7 @@ export function ContractFlowWorkbench() {
         <ConventionsConfigPanel config={config} notification={notification} />
       </section>
 
-      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)_3.5rem]">
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
           <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
@@ -354,7 +354,7 @@ export function ContractFlowWorkbench() {
                 <button
                   type="button"
                   onClick={() => void copyValue("main", outputValue)}
-                  className="absolute right-16 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
+                  className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
                 >
                   {copiedTarget === "main" ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
                   {copiedTarget === "main" ? "Copied" : "Copy"}
@@ -415,7 +415,7 @@ export function ContractFlowWorkbench() {
 
             {showSettings ? (
               <aside className="absolute inset-y-0 right-0 z-20 flex w-[30rem] max-w-[92vw] border-l border-slate-800 bg-slate-950/95 shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
-                <div className="min-w-0 flex-1 border-r border-slate-800 bg-panel/95">
+                <div className="min-w-0 flex-1 bg-panel/95">
                   <div className="flex h-full flex-col">
                     <div className="border-b border-slate-800 px-4 py-3">
                       <h2 className="flex items-center gap-2 text-sm font-semibold text-cyan-200">
@@ -436,15 +436,16 @@ export function ContractFlowWorkbench() {
                     </div>
                   </div>
                 </div>
-                {outputRail}
               </aside>
-            ) : (
-              <div className="absolute inset-y-0 right-0 z-20">
-                {outputRail}
-              </div>
-            )}
+            ) : null}
           </div>
         </article>
+
+        <aside className="min-h-0 flex lg:flex-col">
+          <div className="flex min-h-0 flex-1 overflow-visible rounded-2xl border border-slate-800 bg-panel/90 backdrop-blur-xl">
+            {outputRail}
+          </div>
+        </aside>
       </section>
     </main>
   );
@@ -505,7 +506,7 @@ function OutputSidebarRail({
   onCloseSettings: () => void;
 }) {
   return (
-    <div className="flex h-full w-14 shrink-0 flex-col gap-2 border-l border-slate-800 bg-slate-950/95 p-2 shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
+    <div className="flex h-14 w-full shrink-0 flex-row gap-2 border-t border-slate-800 bg-slate-950/95 p-2 shadow-[0_-12px_24px_rgba(15,23,42,0.18)] lg:h-full lg:w-14 lg:flex-col lg:border-l lg:border-t-0 lg:shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
       <div className="flex flex-1 flex-col gap-1">
         {outputTabs.map((tab) => (
           <SidebarRailButton
@@ -568,3 +569,5 @@ function SidebarRailButton({
     </div>
   );
 }
+
+
