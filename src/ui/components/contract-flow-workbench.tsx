@@ -105,13 +105,13 @@ export function ContractFlowWorkbench() {
         },
         {
           key: "service" as OutputTab,
-          label: "Angular Service",
+          label: "Service",
           icon: <Code2 className="h-4 w-4" />,
           enabled: config.enableServices
         },
         {
           key: "serviceDependencies" as OutputTab,
-          label: "Service Dependencies",
+          label: "Dependencies",
           icon: <Code2 className="h-4 w-4" />,
           enabled: config.enableServices
         },
@@ -137,6 +137,7 @@ export function ContractFlowWorkbench() {
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
   }, [config.enableContracts, config.enableServices, config.enableMocks]);
+  const selectedOutputTab = outputTabs.find((tab) => tab.key === outputTab) ?? outputTabs[0] ?? null;
 
   useEffect(() => {
     if (enabledOutputTabs.length === 0) return;
@@ -242,7 +243,7 @@ export function ContractFlowWorkbench() {
         />
       </section>
 
-      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
@@ -286,17 +287,12 @@ export function ContractFlowWorkbench() {
         </article>
 
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            {outputTabs.map((tab) => (
-              <TabButton
-                key={tab.key}
-                active={outputTab === tab.key}
-                onClick={() => setOutputTab(tab.key)}
-                icon={tab.icon}
-                label={tab.label}
-              />
-            ))}
-            <div className="relative ml-auto">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-100">
+              {selectedOutputTab?.icon}
+              <span className="truncate">{selectedOutputTab?.label ?? "Output"}</span>
+            </div>
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setShowSettings((prev) => !prev)}
@@ -322,22 +318,38 @@ export function ContractFlowWorkbench() {
             </div>
           </div>
 
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-800">
-            <button
-              type="button"
-              onClick={copyCurrentOutput}
-              className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied" : "Copy"}
-            </button>
-            <MonacoEditor
-              height="100%"
-              language={outputLanguage}
-              theme="vs-dark"
-              value={outputValue}
-              options={{ ...editorOptions, readOnly: true }}
-            />
+          <div className="relative min-h-0 flex flex-1 overflow-hidden rounded-lg border border-slate-800">
+            <div className="relative min-w-0 flex-1 overflow-hidden">
+              <button
+                type="button"
+                onClick={copyCurrentOutput}
+                className="absolute right-16 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+              <MonacoEditor
+                height="100%"
+                language={outputLanguage}
+                theme="vs-dark"
+                value={outputValue}
+                options={{ ...editorOptions, readOnly: true }}
+              />
+            </div>
+
+            <aside className="group/sidebar absolute inset-y-0 right-0 z-20 flex w-14 border-l border-slate-800 bg-slate-950/92 shadow-[-12px_0_24px_rgba(15,23,42,0.28)] transition-[width] duration-200 hover:w-48 focus-within:w-48">
+              <div className="flex w-full flex-col gap-1 p-2">
+                {outputTabs.map((tab) => (
+                  <SidebarOutputButton
+                    key={tab.key}
+                    active={outputTab === tab.key}
+                    onClick={() => setOutputTab(tab.key)}
+                    icon={tab.icon}
+                    label={tab.label}
+                  />
+                ))}
+              </div>
+            </aside>
           </div>
         </article>
       </section>
@@ -346,7 +358,7 @@ export function ContractFlowWorkbench() {
   );
 }
 
-function TabButton({
+function SidebarOutputButton({
   active,
   onClick,
   icon,
@@ -361,13 +373,21 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${active
+      title={label}
+      aria-pressed={active}
+      className={`flex h-10 w-full items-center justify-center gap-0 overflow-hidden rounded-lg border px-3 text-sm transition group-hover/sidebar:justify-start group-hover/sidebar:gap-3 group-focus-within/sidebar:justify-start group-focus-within/sidebar:gap-3 ${active
           ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
-          : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600"
+          : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
         }`}
     >
-      {icon}
-      {label}
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
+      <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-150 group-hover/sidebar:max-w-[10rem] group-hover/sidebar:opacity-100 group-focus-within/sidebar:max-w-[10rem] group-focus-within/sidebar:opacity-100">
+        {label}
+      </span>
     </button>
   );
 }
+
+
+
+
