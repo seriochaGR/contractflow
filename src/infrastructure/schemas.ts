@@ -20,8 +20,10 @@ export const engineConfigSchema = z
     mockServiceLatencyMs: z.coerce.number().int().min(0).max(5000).default(150),
     mockServiceSeedCount: z.coerce.number().int().min(0).max(25).default(2),
     mockServiceAutoIds: z.boolean().default(true),
+    uiFramework: z.enum(["none", "material", "tailwind"]).default("none"),
     enableContracts: z.boolean().default(true),
     enableServices: z.boolean().default(true),
+    enableComponents: z.boolean().default(true),
     enableMocks: z.boolean().default(true)
   })
   .partial();
@@ -36,7 +38,7 @@ export const usageMetricEventSchema = z.object({
     "input_uploaded"
   ]),
   sourceType: z.enum(["csharp", "json"]).optional(),
-  output: z.enum(["typescript", "service", "serviceDependencies", "serviceMock", "mocks"]).optional()
+  output: z.enum(["typescript", "service", "serviceDependencies", "serviceMock", "components", "mocks"]).optional()
 });
 
 export const convertSchema = z.object({

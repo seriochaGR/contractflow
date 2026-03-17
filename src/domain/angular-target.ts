@@ -64,9 +64,9 @@ export function getAngularVersionProfile(version: AngularVersion): AngularVersio
   return ANGULAR_VERSION_PROFILES[version];
 }
 
-export function buildCompatibilityBanner(version: AngularVersion, artifact: "contracts" | "service"): string {
+export function buildCompatibilityBanner(version: AngularVersion, artifact: "contracts" | "service" | "component"): string {
   const profile = getAngularVersionProfile(version);
-  const artifactLabel = artifact === "contracts" ? "TypeScript contracts" : "Angular service";
+  const artifactLabel = artifact === "contracts" ? "TypeScript contracts" : artifact === "component" ? "Angular component scaffolding" : "Angular service";
 
   return [
     `// Target: ${profile.label} (${profile.latestMinor})`,
@@ -76,3 +76,4 @@ export function buildCompatibilityBanner(version: AngularVersion, artifact: "con
     `// Compatible RxJS: ${profile.rxjsRange}`
   ].join("\n");
 }
+

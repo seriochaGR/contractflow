@@ -89,6 +89,7 @@ export function UsageMetricsPanel({ refreshToken }: UsageMetricsPanelProps) {
             { label: "Service", value: metrics.outputs.service },
             { label: "Dependencies", value: metrics.outputs.serviceDependencies },
             { label: "Mock Service", value: metrics.outputs.serviceMock },
+            { label: "CRUD Components", value: metrics.outputs.components },
             { label: "JSON Mocks", value: metrics.outputs.mocks }
           ]}
         />
@@ -133,3 +134,4 @@ function MiniSummary({
     </div>
   );
 }
+

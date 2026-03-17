@@ -6,7 +6,8 @@ export type DateMapping = "string" | "Date";
 export type InjectionStyle = "inject" | "constructor";
 export type ServiceErrorHandling = "catchError" | "loggerService";
 export type ServiceDependencyOption = "logService" | "baseApiService" | "mappingService";
-export type OutputSettingsSection = "contracts" | "service" | "serviceMock" | "mocks";
+export type UiFramework = "none" | "material" | "tailwind";
+export type OutputSettingsSection = "contracts" | "service" | "serviceMock" | "components" | "mocks";
 export type { AngularVersion } from "@/domain/angular-target";
 
 export interface PropertySpec {
@@ -19,6 +20,13 @@ export interface PropertySpec {
 export interface ModelSpec {
   name: string;
   properties: PropertySpec[];
+}
+
+export interface AngularCrudComponentArtifacts {
+  listTs: string;
+  listHtml: string;
+  formTs: string;
+  formHtml: string;
 }
 
 export interface EngineConfig {
@@ -39,8 +47,10 @@ export interface EngineConfig {
   mockServiceLatencyMs: number;
   mockServiceSeedCount: number;
   mockServiceAutoIds: boolean;
+  uiFramework: UiFramework;
   enableContracts: boolean;
   enableServices: boolean;
+  enableComponents: boolean;
   enableMocks: boolean;
 }
 
@@ -74,8 +84,10 @@ export const defaultEngineConfig: EngineConfig = {
   mockServiceLatencyMs: 150,
   mockServiceSeedCount: 2,
   mockServiceAutoIds: true,
+  uiFramework: "none",
   enableContracts: true,
   enableServices: true,
+  enableComponents: true,
   enableMocks: true
 };
 

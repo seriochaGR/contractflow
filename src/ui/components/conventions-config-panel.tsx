@@ -66,6 +66,14 @@ const SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     helperText: "Configure the in-memory Angular mock service independently from the live service output."
   },
   {
+    key: "components",
+    label: "Component Generation",
+    buttonLabel: "Components",
+    icon: <Code2 className="h-4 w-4" />,
+    enabled: (config) => config.enableComponents,
+    helperText: "Generate standalone CRUD list and form components with a template strategy driven by the selected UI framework."
+  },
+  {
     key: "mocks",
     label: "JSON Mocks",
     buttonLabel: "JSON Mocks",
@@ -79,6 +87,7 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
   const enabledSections = [
     config.enableContracts ? "contracts" : null,
     config.enableServices ? "services + mock service" : null,
+    config.enableComponents ? "crud components" : null,
     config.enableMocks ? "json mocks" : null
   ]
     .filter(Boolean)
@@ -99,6 +108,7 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
       icon: FlaskConical,
       label: `Mock ${config.mockServiceSuffix} • ${config.mockServiceSeedCount} seed • ${config.mockServiceLatencyMs}ms`
     },
+    { icon: Code2, label: `UI ${config.uiFramework}` },
     { icon: FlaskConical, label: `Enabled: ${enabledSections || "none"}` }
   ];
 
@@ -147,9 +157,10 @@ export function SettingsPanelContent({
     <>
       <div className="mb-3 rounded-md border border-slate-700 bg-slate-950/70 p-3">
         <p className="mb-2 text-xs text-slate-400">Enable output sections</p>
-        <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-3">
+        <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-4">
           <Toggle checked={config.enableContracts} onChange={(checked) => onUpdateConfig("enableContracts", checked)} label="Contracts" />
           <Toggle checked={config.enableServices} onChange={(checked) => onUpdateConfig("enableServices", checked)} label="Services" />
+          <Toggle checked={config.enableComponents} onChange={(checked) => onUpdateConfig("enableComponents", checked)} label="Components" />
           <Toggle checked={config.enableMocks} onChange={(checked) => onUpdateConfig("enableMocks", checked)} label="Mocks" />
         </div>
       </div>
@@ -342,6 +353,32 @@ export function SettingsPanelContent({
         </>
       ) : null}
 
+      {activeSection?.key === "components" ? (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="UI Framework">
+              <select
+                value={config.uiFramework}
+                onChange={(event) => onUpdateConfig("uiFramework", event.target.value as EngineConfig["uiFramework"])}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              >
+                <option value="none">None</option>
+                <option value="material">Angular Material</option>
+                <option value="tailwind">Tailwind CSS</option>
+              </select>
+            </Field>
+          </div>
+          <div className="mt-3 rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
+            CRUD scaffolding generates a standalone list component and a standalone reactive form component.
+            <ul className="mt-2 list-disc pl-5 text-xs text-slate-400">
+              <li>Standalone components by default</li>
+              <li>Reactive Forms with FormBuilder</li>
+              <li>Validator inference for required, email and password fields</li>
+              <li>Template strategy for semantic HTML, Angular Material or Tailwind CSS</li>
+            </ul>
+          </div>
+        </>
+      ) : null}
       {activeSection?.key === "mocks" ? (
         <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
           No mock-specific toggles yet. Current mock output reflects:
@@ -624,3 +661,5 @@ function MultiSelectDropdown({
     </div>
   );
 }
+
+

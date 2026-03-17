@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { Braces, Check, Code2, Copy, FileCode2, FlaskConical, Settings2, Upload } from "lucide-react";
-import { defaultEngineConfig, EngineConfig, SourceType } from "@/domain/types";
+import { AngularCrudComponentArtifacts, defaultEngineConfig, EngineConfig, SourceType } from "@/domain/types";
 import type { UsageMetricEventName, UsageMetricOutputKey } from "@/domain/usage-metrics";
 import { AppMainHeader } from "@/ui/components/app-main-header";
 import {
@@ -20,10 +20,13 @@ interface EngineResponse {
   angularService: string;
   angularServiceDependencies: string;
   angularMockService: string;
+  angularCrudComponents: AngularCrudComponentArtifacts;
   jsonMocks: string;
 }
 
-type OutputTab = "typescript" | "service" | "serviceDependencies" | "serviceMock" | "mocks";
+type OutputTab = "typescript" | "service" | "serviceDependencies" | "serviceMock" | "components" | "mocks";
+type CrudComponentView = "list" | "form";
+type CopyTarget = "main" | "componentTs" | "componentHtml" | null;
 
 const EXAMPLES = {
   csharp: `public class UserDto
@@ -39,6 +42,13 @@ const EXAMPLES = {
   "birthDate": "2026-01-01T08:30:00Z",
   "roles": ["admin", "editor"]
 }`
+};
+
+const EMPTY_CRUD_COMPONENTS: AngularCrudComponentArtifacts = {
+  listTs: "// CRUD list component output",
+  listHtml: "<!-- CRUD list template output -->",
+  formTs: "// CRUD form component output",
+  formHtml: "<!-- CRUD form template output -->"
 };
 
 const editorOptions = {
@@ -59,12 +69,13 @@ export function ContractFlowWorkbench() {
   const [config, setConfig] = useState<EngineConfig>(defaultEngineConfig);
   const [output, setOutput] = useState<EngineResponse | null>(null);
   const [outputTab, setOutputTab] = useState<OutputTab>("typescript");
+  const [crudComponentView, setCrudComponentView] = useState<CrudComponentView>("list");
   const [showSettings, setShowSettings] = useState(false);
   const [isOutputRailExpanded, setIsOutputRailExpanded] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("contracts");
   const [error, setError] = useState("");
   const [notification, setNotification] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedTarget, setCopiedTarget] = useState<CopyTarget>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -78,10 +89,10 @@ export function ContractFlowWorkbench() {
   }, [notification]);
 
   useEffect(() => {
-    if (!copied) return;
-    const timeoutId = setTimeout(() => setCopied(false), 1500);
+    if (!copiedTarget) return;
+    const timeoutId = setTimeout(() => setCopiedTarget(null), 1500);
     return () => clearTimeout(timeoutId);
-  }, [copied]);
+  }, [copiedTarget]);
 
   const enabledOutputTabs = useMemo(() => {
     const tabs: OutputTab[] = [];
@@ -89,9 +100,10 @@ export function ContractFlowWorkbench() {
     if (config.enableServices) tabs.push("service");
     if (config.enableServices) tabs.push("serviceDependencies");
     if (config.enableServices) tabs.push("serviceMock");
+    if (config.enableComponents) tabs.push("components");
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
-  }, [config.enableContracts, config.enableServices, config.enableMocks]);
+  }, [config.enableContracts, config.enableServices, config.enableComponents, config.enableMocks]);
 
   const outputTabs = useMemo(
     () =>
@@ -110,9 +122,15 @@ export function ContractFlowWorkbench() {
           icon: <FlaskConical className="h-4 w-4" />,
           enabled: config.enableServices
         },
+        {
+          key: "components" as OutputTab,
+          label: "CRUD Components",
+          icon: <Code2 className="h-4 w-4" />,
+          enabled: config.enableComponents
+        },
         { key: "mocks" as OutputTab, label: "JSON Mocks", icon: <FlaskConical className="h-4 w-4" />, enabled: config.enableMocks }
       ].filter((tab) => tab.enabled),
-    [config.enableContracts, config.enableServices, config.enableMocks]
+    [config.enableContracts, config.enableServices, config.enableComponents, config.enableMocks]
   );
 
   const enabledSettingsTabs = useMemo(() => {
@@ -120,9 +138,10 @@ export function ContractFlowWorkbench() {
     if (config.enableContracts) tabs.push("contracts");
     if (config.enableServices) tabs.push("service");
     if (config.enableServices) tabs.push("serviceMock");
+    if (config.enableComponents) tabs.push("components");
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
-  }, [config.enableContracts, config.enableServices, config.enableMocks]);
+  }, [config.enableContracts, config.enableServices, config.enableComponents, config.enableMocks]);
 
   const selectedOutputTab = outputTabs.find((tab) => tab.key === outputTab) ?? outputTabs[0] ?? null;
   const headerIcon = showSettings ? <Settings2 className="h-4 w-4" /> : selectedOutputTab?.icon;
@@ -137,6 +156,12 @@ export function ContractFlowWorkbench() {
     if (enabledSettingsTabs.length === 0) return;
     if (!enabledSettingsTabs.includes(settingsTab)) setSettingsTab(enabledSettingsTabs[0]);
   }, [enabledSettingsTabs, settingsTab]);
+
+  const crudComponents = output?.angularCrudComponents ?? EMPTY_CRUD_COMPONENTS;
+  const selectedCrudOutput =
+    crudComponentView === "list"
+      ? { title: "List Component", ts: crudComponents.listTs, html: crudComponents.listHtml }
+      : { title: "Form Component", ts: crudComponents.formTs, html: crudComponents.formHtml };
 
   const outputValue =
     enabledOutputTabs.length === 0
@@ -170,8 +195,8 @@ export function ContractFlowWorkbench() {
   }
 
   async function runGeneration() {
-    if (!config.enableContracts && !config.enableServices && !config.enableMocks) {
-      const message = "Enable at least one output section (contracts, services, or mocks) in Settings.";
+    if (!config.enableContracts && !config.enableServices && !config.enableComponents && !config.enableMocks) {
+      const message = "Enable at least one output section (contracts, services, components, or mocks) in Settings.";
       setError(message);
       setNotification({ kind: "error", message });
       return;
@@ -192,12 +217,14 @@ export function ContractFlowWorkbench() {
         angularService: payload.angularService,
         angularServiceDependencies: payload.angularServiceDependencies,
         angularMockService: payload.angularMockService,
+        angularCrudComponents: payload.angularCrudComponents ?? EMPTY_CRUD_COMPONENTS,
         jsonMocks: payload.jsonMocks
       });
       const enabledNames = [
         config.enableContracts ? "TypeScript contracts" : null,
         config.enableServices ? "Angular service" : null,
         config.enableServices ? "Angular mock service" : null,
+        config.enableComponents ? "CRUD components" : null,
         config.enableMocks ? "JSON mocks" : null
       ].filter(Boolean);
       setNotification({ kind: "success", message: `Generation completed: ${enabledNames.join(", ")} ready.` });
@@ -228,11 +255,15 @@ export function ContractFlowWorkbench() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function copyCurrentOutput() {
-    if (!outputValue) return;
-    await navigator.clipboard.writeText(outputValue);
-    setCopied(true);
-    void trackMetric("output_copied", { output: outputTab as UsageMetricOutputKey });
+  async function copyValue(target: CopyTarget, value: string) {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    setCopiedTarget(target);
+    if (target === "main") {
+      void trackMetric("output_copied", { output: outputTab as UsageMetricOutputKey });
+      return;
+    }
+    void trackMetric("output_copied", { output: "components" });
   }
 
   function selectOutput(tab: OutputTab) {
@@ -300,23 +331,67 @@ export function ContractFlowWorkbench() {
 
           <div className="relative min-h-0 flex flex-1 overflow-hidden rounded-lg border border-slate-800">
             <div className="relative min-w-0 flex-1 overflow-hidden">
-              {!showSettings ? (
+              {!showSettings && outputTab !== "components" ? (
                 <button
                   type="button"
-                  onClick={copyCurrentOutput}
+                  onClick={() => void copyValue("main", outputValue)}
                   className="absolute right-16 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
                 >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied" : "Copy"}
+                  {copiedTarget === "main" ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedTarget === "main" ? "Copied" : "Copy"}
                 </button>
               ) : null}
-              <MonacoEditor
-                height="100%"
-                language={outputLanguage}
-                theme="vs-dark"
-                value={outputValue}
-                options={{ ...editorOptions, readOnly: true }}
-              />
+
+              {showSettings ? (
+                <div className="h-full" />
+              ) : outputTab === "components" ? (
+                <div className="flex h-full min-h-0 flex-col bg-slate-950/60">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-3 py-2">
+                    <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900/80 p-1 text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setCrudComponentView("list")}
+                        className={`rounded-md px-3 py-1.5 ${crudComponentView === "list" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
+                      >
+                        List Component
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCrudComponentView("form")}
+                        className={`rounded-md px-3 py-1.5 ${crudComponentView === "form" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
+                      >
+                        Form Component
+                      </button>
+                    </div>
+                    <div className="text-xs text-slate-400">{selectedCrudOutput.title}</div>
+                  </div>
+
+                  <div className="grid min-h-0 flex-1 gap-px bg-slate-800 lg:grid-cols-2">
+                    <SplitEditorPane
+                      label={`${contextualFilename(crudComponentView, "ts")}`}
+                      language="typescript"
+                      value={selectedCrudOutput.ts}
+                      copied={copiedTarget === "componentTs"}
+                      onCopy={() => void copyValue("componentTs", selectedCrudOutput.ts)}
+                    />
+                    <SplitEditorPane
+                      label={`${contextualFilename(crudComponentView, "html")}`}
+                      language="html"
+                      value={selectedCrudOutput.html}
+                      copied={copiedTarget === "componentHtml"}
+                      onCopy={() => void copyValue("componentHtml", selectedCrudOutput.html)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <MonacoEditor
+                  height="100%"
+                  language={outputLanguage}
+                  theme="vs-dark"
+                  value={outputValue}
+                  options={{ ...editorOptions, readOnly: true }}
+                />
+              )}
             </div>
 
             {showSettings ? (
@@ -426,6 +501,49 @@ export function ContractFlowWorkbench() {
       </section>
     </main>
   );
+}
+
+function SplitEditorPane({
+  label,
+  language,
+  value,
+  copied,
+  onCopy
+}: {
+  label: string;
+  language: string;
+  value: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="min-h-0 flex flex-col overflow-hidden bg-slate-950">
+      <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+        <span>{label}</span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-slate-200 hover:border-slate-500"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <MonacoEditor
+          height="100%"
+          language={language}
+          theme="vs-dark"
+          value={value}
+          options={{ ...editorOptions, readOnly: true }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function contextualFilename(view: CrudComponentView, extension: "ts" | "html") {
+  return view === "list" ? `list.component.${extension}` : `form.component.${extension}`;
 }
 
 function SidebarRailButton({

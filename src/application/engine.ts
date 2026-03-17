@@ -1,17 +1,26 @@
+import { generateAngularComponents } from "@/domain/angular-component-generator";
 import { generateAngularArtifacts, generateAngularService } from "@/domain/angular-service-generator";
 import { parseCSharpModels } from "@/domain/csharp-parser";
 import { parseJsonModels } from "@/domain/json-parser";
 import { generateJsonMocks } from "@/domain/mock-generator";
-import { ConvertRequest, ConvertResult, EngineConfig, ModelSpec, withDefaults } from "@/domain/types";
+import { AngularCrudComponentArtifacts, ConvertRequest, ConvertResult, EngineConfig, ModelSpec, withDefaults } from "@/domain/types";
 import { generateTypescript } from "@/domain/typescript-generator";
 
 export interface EngineOutput extends ConvertResult {
   angularService: string;
   angularServiceDependencies: string;
   angularMockService: string;
+  angularCrudComponents: AngularCrudComponentArtifacts;
   jsonMocks: string;
   config: EngineConfig;
 }
+
+const EMPTY_CRUD_COMPONENTS: AngularCrudComponentArtifacts = {
+  listTs: "",
+  listHtml: "",
+  formTs: "",
+  formHtml: ""
+};
 
 export function convertInput(request: ConvertRequest): ConvertResult {
   const config = withDefaults(request.config);
@@ -31,12 +40,16 @@ export function generateArtifacts(request: ConvertRequest): EngineOutput {
   const angularArtifacts = config.enableServices
     ? generateAngularArtifacts(conversion.models, config)
     : { service: "", dependencies: "", mockService: "" };
+  const angularCrudComponents = config.enableComponents
+    ? generateAngularComponents(conversion.models, config)
+    : EMPTY_CRUD_COMPONENTS;
   const jsonMocks = config.enableMocks ? generateJsonMocks(conversion.models) : "";
   return {
     ...conversion,
     angularService: angularArtifacts.service,
     angularServiceDependencies: angularArtifacts.dependencies,
     angularMockService: angularArtifacts.mockService,
+    angularCrudComponents,
     jsonMocks,
     config
   };

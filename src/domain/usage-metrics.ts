@@ -8,7 +8,7 @@ export type UsageMetricEventName =
   | "output_copied"
   | "input_uploaded";
 
-export type UsageMetricOutputKey = "typescript" | "service" | "serviceDependencies" | "serviceMock" | "mocks";
+export type UsageMetricOutputKey = "typescript" | "service" | "serviceDependencies" | "serviceMock" | "components" | "mocks";
 
 export interface UsageMetricEvent {
   name: UsageMetricEventName;

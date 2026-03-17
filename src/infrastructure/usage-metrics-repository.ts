@@ -23,6 +23,7 @@ function createInitialSnapshot(): UsageMetricsSnapshot {
       service: 0,
       serviceDependencies: 0,
       serviceMock: 0,
+      components: 0,
       mocks: 0
     },
     recentEvents: []
@@ -83,3 +84,4 @@ function assertNever(_: never) {
 
 export const usageMetricsRepository = new InMemoryUsageMetricsRepository();
 export type { UsageMetricEventName };
+
