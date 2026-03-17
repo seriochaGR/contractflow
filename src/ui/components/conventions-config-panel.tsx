@@ -16,16 +16,19 @@ interface ConventionsConfigPanelProps {
   notification: { kind: "success" | "error"; message: string } | null;
 }
 
-interface SettingsPopoverPanelProps {
+interface SettingsPanelContentProps {
   config: EngineConfig;
   rootModelName: string;
-  showSettings: boolean;
   settingsTab: SettingsTab;
   error: string;
-  onCloseSettings: () => void;
   onRootModelNameChange: (value: string) => void;
   onSettingsTabChange: (tab: SettingsTab) => void;
   onUpdateConfig: <K extends keyof EngineConfig>(key: K, value: EngineConfig[K]) => void;
+}
+
+interface SettingsPopoverPanelProps extends SettingsPanelContentProps {
+  showSettings: boolean;
+  onCloseSettings: () => void;
 }
 
 export function ConventionsConfigPanel({ config, notification }: ConventionsConfigPanelProps) {
@@ -80,6 +83,223 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
   );
 }
 
+export function SettingsPanelContent({
+  config,
+  rootModelName,
+  settingsTab,
+  error,
+  onRootModelNameChange,
+  onSettingsTabChange,
+  onUpdateConfig
+}: SettingsPanelContentProps) {
+  return (
+    <>
+      <div className="mb-3 rounded-md border border-slate-700 bg-slate-950/70 p-3">
+        <p className="mb-2 text-xs text-slate-400">Enable output sections</p>
+        <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-3">
+          <Toggle
+            checked={config.enableContracts}
+            onChange={(checked) => onUpdateConfig("enableContracts", checked)}
+            label="Contracts"
+          />
+          <Toggle
+            checked={config.enableServices}
+            onChange={(checked) => onUpdateConfig("enableServices", checked)}
+            label="Services"
+          />
+          <Toggle checked={config.enableMocks} onChange={(checked) => onUpdateConfig("enableMocks", checked)} label="Mocks" />
+        </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        {config.enableContracts ? (
+          <DialogTabButton
+            active={settingsTab === "contracts"}
+            onClick={() => onSettingsTabChange("contracts")}
+            icon={<Braces className="h-4 w-4" />}
+            label="TypeScript Contracts"
+          />
+        ) : null}
+        {config.enableServices ? (
+          <DialogTabButton
+            active={settingsTab === "service"}
+            onClick={() => onSettingsTabChange("service")}
+            icon={<Code2 className="h-4 w-4" />}
+            label="Angular Services"
+          />
+        ) : null}
+        {config.enableMocks ? (
+          <DialogTabButton
+            active={settingsTab === "mocks"}
+            onClick={() => onSettingsTabChange("mocks")}
+            icon={<FlaskConical className="h-4 w-4" />}
+            label="Mocks"
+          />
+        ) : null}
+      </div>
+
+      {!config.enableContracts && !config.enableServices && !config.enableMocks ? (
+        <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
+          No sections are enabled. Activate at least one section above to configure and generate outputs.
+        </div>
+      ) : null}
+
+      {config.enableContracts && settingsTab === "contracts" ? (
+        <>
+          <p className="mb-3 text-xs text-slate-400">
+            These options affect generated TypeScript models and also influence service/mocks via model shape.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="Root Model (JSON input)">
+              <input
+                value={rootModelName}
+                onChange={(event) => onRootModelNameChange(event.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="Prefix">
+              <input
+                value={config.modelPrefix}
+                onChange={(event) => onUpdateConfig("modelPrefix", event.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="Type Output">
+              <select
+                value={config.tsOutputKind}
+                onChange={(event) => onUpdateConfig("tsOutputKind", event.target.value as TsOutputKind)}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              >
+                <option value="interface">interface</option>
+                <option value="type">type</option>
+                <option value="class">class</option>
+              </select>
+            </Field>
+            <Field label="Date Mapping">
+              <select
+                value={config.dateMapping}
+                onChange={(event) => onUpdateConfig("dateMapping", event.target.value as EngineConfig["dateMapping"])}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              >
+                <option value="string">string</option>
+                <option value="Date">Date</option>
+              </select>
+            </Field>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
+            <Toggle
+              checked={config.camelCaseProperties}
+              onChange={(checked) => onUpdateConfig("camelCaseProperties", checked)}
+              label="camelCase properties"
+            />
+            <Toggle
+              checked={config.nullableAsUnion}
+              onChange={(checked) => onUpdateConfig("nullableAsUnion", checked)}
+              label="Nullable union"
+            />
+          </div>
+        </>
+      ) : null}
+
+      {config.enableServices && settingsTab === "service" ? (
+        <>
+          <p className="mb-3 text-xs text-slate-400">These options affect Angular service generation only.</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="Injection">
+              <select
+                value={config.injectionStyle}
+                onChange={(event) =>
+                  onUpdateConfig("injectionStyle", event.target.value as EngineConfig["injectionStyle"])
+                }
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              >
+                <option value="inject">inject()</option>
+                <option value="constructor">constructor</option>
+              </select>
+            </Field>
+            <Field label="API URL Pattern">
+              <input
+                value={config.apiUrlPattern}
+                onChange={(event) => onUpdateConfig("apiUrlPattern", event.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="Service Suffix">
+              <input
+                value={config.serviceSuffix}
+                onChange={(event) => onUpdateConfig("serviceSuffix", event.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="Error Handling">
+              <select
+                value={config.serviceErrorHandling}
+                onChange={(event) =>
+                  updateErrorHandling(
+                    event.target.value as EngineConfig["serviceErrorHandling"],
+                    config.serviceDependencies,
+                    onUpdateConfig
+                  )
+                }
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+              >
+                <option value="catchError">CatchError</option>
+                <option value="loggerService">LoggerService</option>
+              </select>
+            </Field>
+            <Field label="Service Dependencies">
+              <MultiSelectDropdown
+                value={config.serviceDependencies}
+                options={SERVICE_DEPENDENCY_OPTIONS}
+                onChange={(dependencies) => updateServiceDependencies(dependencies, onUpdateConfig)}
+              />
+            </Field>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
+            <Toggle
+              checked={config.serviceUseSignals}
+              onChange={(checked) => onUpdateConfig("serviceUseSignals", checked)}
+              label="Angular Signals"
+            />
+            <Toggle
+              checked={config.serviceExtendsBaseApi}
+              onChange={(checked) => {
+                onUpdateConfig("serviceExtendsBaseApi", checked);
+                if (checked && !config.serviceDependencies.includes("baseApiService")) {
+                  onUpdateConfig("serviceDependencies", [...config.serviceDependencies, "baseApiService"]);
+                }
+              }}
+              label="Extend BaseApiService"
+            />
+          </div>
+        </>
+      ) : null}
+
+      {config.enableMocks && settingsTab === "mocks" ? (
+        <>
+          <p className="mb-3 text-xs text-slate-400">
+            Mocks are inferred from generated contracts. Adjust contract settings to influence mock structure.
+          </p>
+          <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
+            No mock-specific toggles yet. Current mock output reflects:
+            <ul className="mt-2 list-disc pl-5 text-xs text-slate-400">
+              <li>Contract field names and types</li>
+              <li>Date mapping (`string` vs `Date`)</li>
+              <li>Nullable model rules</li>
+            </ul>
+          </div>
+        </>
+      ) : null}
+
+      {error ? (
+        <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-900/20 px-3 py-2 text-sm text-rose-300">
+          {error}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function SettingsPopoverPanel({
   config,
   rootModelName,
@@ -110,209 +330,16 @@ export function SettingsPopoverPanel({
       </div>
 
       <div className="tool-scroll max-h-[70vh] overflow-y-auto rounded-lg border border-slate-700 bg-slate-900/80 p-3">
-        <div className="mb-3 rounded-md border border-slate-700 bg-slate-950/70 p-3">
-          <p className="mb-2 text-xs text-slate-400">Enable output sections</p>
-          <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-3">
-            <Toggle
-              checked={config.enableContracts}
-              onChange={(checked) => onUpdateConfig("enableContracts", checked)}
-              label="Contracts"
-            />
-            <Toggle
-              checked={config.enableServices}
-              onChange={(checked) => onUpdateConfig("enableServices", checked)}
-              label="Services"
-            />
-            <Toggle checked={config.enableMocks} onChange={(checked) => onUpdateConfig("enableMocks", checked)} label="Mocks" />
-          </div>
-        </div>
-
-        <div className="mb-3 flex flex-wrap gap-2">
-          {config.enableContracts ? (
-            <DialogTabButton
-              active={settingsTab === "contracts"}
-              onClick={() => onSettingsTabChange("contracts")}
-              icon={<Braces className="h-4 w-4" />}
-              label="TypeScript Contracts"
-            />
-          ) : null}
-          {config.enableServices ? (
-            <DialogTabButton
-              active={settingsTab === "service"}
-              onClick={() => onSettingsTabChange("service")}
-              icon={<Code2 className="h-4 w-4" />}
-              label="Angular Services"
-            />
-          ) : null}
-          {config.enableMocks ? (
-            <DialogTabButton
-              active={settingsTab === "mocks"}
-              onClick={() => onSettingsTabChange("mocks")}
-              icon={<FlaskConical className="h-4 w-4" />}
-              label="Mocks"
-            />
-          ) : null}
-        </div>
-
-        {!config.enableContracts && !config.enableServices && !config.enableMocks ? (
-          <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
-            No sections are enabled. Activate at least one section above to configure and generate outputs.
-          </div>
-        ) : null}
-
-        {config.enableContracts && settingsTab === "contracts" ? (
-          <>
-            <p className="mb-3 text-xs text-slate-400">
-              These options affect generated TypeScript models and also influence service/mocks via model shape.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Field label="Root Model (JSON input)">
-                <input
-                  value={rootModelName}
-                  onChange={(event) => onRootModelNameChange(event.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                />
-              </Field>
-              <Field label="Prefix">
-                <input
-                  value={config.modelPrefix}
-                  onChange={(event) => onUpdateConfig("modelPrefix", event.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                />
-              </Field>
-              <Field label="Type Output">
-                <select
-                  value={config.tsOutputKind}
-                  onChange={(event) => onUpdateConfig("tsOutputKind", event.target.value as TsOutputKind)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                >
-                  <option value="interface">interface</option>
-                  <option value="type">type</option>
-                  <option value="class">class</option>
-                </select>
-              </Field>
-              <Field label="Date Mapping">
-                <select
-                  value={config.dateMapping}
-                  onChange={(event) => onUpdateConfig("dateMapping", event.target.value as EngineConfig["dateMapping"])}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                >
-                  <option value="string">string</option>
-                  <option value="Date">Date</option>
-                </select>
-              </Field>
-            </div>
-            <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
-              <Toggle
-                checked={config.camelCaseProperties}
-                onChange={(checked) => onUpdateConfig("camelCaseProperties", checked)}
-                label="camelCase properties"
-              />
-              <Toggle
-                checked={config.nullableAsUnion}
-                onChange={(checked) => onUpdateConfig("nullableAsUnion", checked)}
-                label="Nullable union"
-              />
-            </div>
-          </>
-        ) : null}
-
-        {config.enableServices && settingsTab === "service" ? (
-          <>
-            <p className="mb-3 text-xs text-slate-400">These options affect Angular service generation only.</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Field label="Injection">
-                <select
-                  value={config.injectionStyle}
-                  onChange={(event) =>
-                    onUpdateConfig("injectionStyle", event.target.value as EngineConfig["injectionStyle"])
-                  }
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                >
-                  <option value="inject">inject()</option>
-                  <option value="constructor">constructor</option>
-                </select>
-              </Field>
-              <Field label="API URL Pattern">
-                <input
-                  value={config.apiUrlPattern}
-                  onChange={(event) => onUpdateConfig("apiUrlPattern", event.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                />
-              </Field>
-              <Field label="Service Suffix">
-                <input
-                  value={config.serviceSuffix}
-                  onChange={(event) => onUpdateConfig("serviceSuffix", event.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                />
-              </Field>
-              <Field label="Error Handling">
-                <select
-                  value={config.serviceErrorHandling}
-                  onChange={(event) =>
-                    updateErrorHandling(
-                      event.target.value as EngineConfig["serviceErrorHandling"],
-                      config.serviceDependencies,
-                      onUpdateConfig
-                    )
-                  }
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
-                >
-                  <option value="catchError">CatchError</option>
-                  <option value="loggerService">LoggerService</option>
-                </select>
-              </Field>
-              <Field label="Service Dependencies">
-                <MultiSelectDropdown
-                  value={config.serviceDependencies}
-                  options={SERVICE_DEPENDENCY_OPTIONS}
-                  onChange={(dependencies) => updateServiceDependencies(dependencies, onUpdateConfig)}
-                />
-              </Field>
-            </div>
-            <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
-              <Toggle
-                checked={config.serviceUseSignals}
-                onChange={(checked) => onUpdateConfig("serviceUseSignals", checked)}
-                label="Angular Signals"
-              />
-              <Toggle
-                checked={config.serviceExtendsBaseApi}
-                onChange={(checked) => {
-                  onUpdateConfig("serviceExtendsBaseApi", checked);
-                  if (checked && !config.serviceDependencies.includes("baseApiService")) {
-                    onUpdateConfig("serviceDependencies", [...config.serviceDependencies, "baseApiService"]);
-                  }
-                }}
-                label="Extend BaseApiService"
-              />
-            </div>
-          </>
-        ) : null}
-
-        {config.enableMocks && settingsTab === "mocks" ? (
-          <>
-            <p className="mb-3 text-xs text-slate-400">
-              Mocks are inferred from generated contracts. Adjust contract settings to influence mock structure.
-            </p>
-            <div className="rounded-md border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-300">
-              No mock-specific toggles yet. Current mock output reflects:
-              <ul className="mt-2 list-disc pl-5 text-xs text-slate-400">
-                <li>Contract field names and types</li>
-                <li>Date mapping (`string` vs `Date`)</li>
-                <li>Nullable model rules</li>
-              </ul>
-            </div>
-          </>
-        ) : null}
+        <SettingsPanelContent
+          config={config}
+          rootModelName={rootModelName}
+          settingsTab={settingsTab}
+          error={error}
+          onRootModelNameChange={onRootModelNameChange}
+          onSettingsTabChange={onSettingsTabChange}
+          onUpdateConfig={onUpdateConfig}
+        />
       </div>
-
-      {error ? (
-        <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-900/20 px-3 py-2 text-sm text-rose-300">
-          {error}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -488,7 +515,7 @@ function MultiSelectDropdown({
       </button>
 
       {isOpen && menuStyle && typeof document !== "undefined"
-          ? createPortal(
+        ? createPortal(
             <div
               ref={menuRef}
               className="fixed z-[80] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-glow"

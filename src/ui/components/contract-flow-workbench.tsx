@@ -7,7 +7,7 @@ import { defaultEngineConfig, EngineConfig, SourceType } from "@/domain/types";
 import { AppMainHeader } from "@/ui/components/app-main-header";
 import {
   ConventionsConfigPanel,
-  SettingsPopoverPanel,
+  SettingsPanelContent,
   SettingsTab
 } from "@/ui/components/conventions-config-panel";
 import { useProjectConfig } from "@/ui/providers/project-config-provider";
@@ -59,11 +59,10 @@ export function ContractFlowWorkbench() {
   const [output, setOutput] = useState<EngineResponse | null>(null);
   const [outputTab, setOutputTab] = useState<OutputTab>("typescript");
   const [showSettings, setShowSettings] = useState(false);
+  const [isOutputRailExpanded, setIsOutputRailExpanded] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("contracts");
   const [error, setError] = useState("");
-  const [notification, setNotification] = useState<{ kind: "success" | "error"; message: string } | null>(
-    null
-  );
+  const [notification, setNotification] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -73,9 +72,7 @@ export function ContractFlowWorkbench() {
 
   useEffect(() => {
     if (!notification || notification.kind !== "success") return;
-    const timeoutId = setTimeout(() => {
-      setNotification(null);
-    }, 4000);
+    const timeoutId = setTimeout(() => setNotification(null), 4000);
     return () => clearTimeout(timeoutId);
   }, [notification]);
 
@@ -94,21 +91,12 @@ export function ContractFlowWorkbench() {
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
   }, [config.enableContracts, config.enableServices, config.enableMocks]);
+
   const outputTabs = useMemo(
     () =>
       [
-        {
-          key: "typescript" as OutputTab,
-          label: "Contracts",
-          icon: <Braces className="h-4 w-4" />,
-          enabled: config.enableContracts
-        },
-        {
-          key: "service" as OutputTab,
-          label: "Service",
-          icon: <Code2 className="h-4 w-4" />,
-          enabled: config.enableServices
-        },
+        { key: "typescript" as OutputTab, label: "Contracts", icon: <Braces className="h-4 w-4" />, enabled: config.enableContracts },
+        { key: "service" as OutputTab, label: "Service", icon: <Code2 className="h-4 w-4" />, enabled: config.enableServices },
         {
           key: "serviceDependencies" as OutputTab,
           label: "Dependencies",
@@ -121,15 +109,11 @@ export function ContractFlowWorkbench() {
           icon: <FlaskConical className="h-4 w-4" />,
           enabled: config.enableServices
         },
-        {
-          key: "mocks" as OutputTab,
-          label: "JSON Mocks",
-          icon: <FlaskConical className="h-4 w-4" />,
-          enabled: config.enableMocks
-        }
+        { key: "mocks" as OutputTab, label: "JSON Mocks", icon: <FlaskConical className="h-4 w-4" />, enabled: config.enableMocks }
       ].filter((tab) => tab.enabled),
     [config.enableContracts, config.enableServices, config.enableMocks]
   );
+
   const enabledSettingsTabs = useMemo(() => {
     const tabs: SettingsTab[] = [];
     if (config.enableContracts) tabs.push("contracts");
@@ -137,20 +121,19 @@ export function ContractFlowWorkbench() {
     if (config.enableMocks) tabs.push("mocks");
     return tabs;
   }, [config.enableContracts, config.enableServices, config.enableMocks]);
+
   const selectedOutputTab = outputTabs.find((tab) => tab.key === outputTab) ?? outputTabs[0] ?? null;
+  const headerIcon = showSettings ? <Settings2 className="h-4 w-4" /> : selectedOutputTab?.icon;
+  const headerLabel = showSettings ? "Settings" : (selectedOutputTab?.label ?? "Output");
 
   useEffect(() => {
     if (enabledOutputTabs.length === 0) return;
-    if (!enabledOutputTabs.includes(outputTab)) {
-      setOutputTab(enabledOutputTabs[0]);
-    }
+    if (!enabledOutputTabs.includes(outputTab)) setOutputTab(enabledOutputTabs[0]);
   }, [enabledOutputTabs, outputTab]);
 
   useEffect(() => {
     if (enabledSettingsTabs.length === 0) return;
-    if (!enabledSettingsTabs.includes(settingsTab)) {
-      setSettingsTab(enabledSettingsTabs[0]);
-    }
+    if (!enabledSettingsTabs.includes(settingsTab)) setSettingsTab(enabledSettingsTabs[0]);
   }, [enabledSettingsTabs, settingsTab]);
 
   const outputValue =
@@ -165,6 +148,7 @@ export function ContractFlowWorkbench() {
             : outputTab === "serviceMock"
               ? output?.angularMockService ?? "// Angular mock service output"
               : output?.jsonMocks ?? "// JSON mocks output";
+
   const outputLanguage = outputTab === "mocks" ? "json" : "typescript";
   const inputLanguage = sourceType === "json" ? "json" : "csharp";
 
@@ -199,10 +183,7 @@ export function ContractFlowWorkbench() {
         config.enableServices ? "Angular mock service" : null,
         config.enableMocks ? "JSON mocks" : null
       ].filter(Boolean);
-      setNotification({
-        kind: "success",
-        message: `Generation completed: ${enabledNames.join(", ")} ready.`
-      });
+      setNotification({ kind: "success", message: `Generation completed: ${enabledNames.join(", ")} ready.` });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unexpected error";
       setError(message);
@@ -233,19 +214,22 @@ export function ContractFlowWorkbench() {
     setCopied(true);
   }
 
+  function selectOutput(tab: OutputTab) {
+    setOutputTab(tab);
+    setShowSettings(false);
+    setIsOutputRailExpanded(false);
+  }
+
   return (
     <main className="mx-auto flex h-[calc(100vh-4rem)] max-w-[1600px] flex-col overflow-hidden px-4 py-4 md:px-6">
       <section className="animate-rise mb-4 rounded-2xl border border-cyan-400/25 bg-panel/90 p-4 shadow-glow backdrop-blur-xl">
         <AppMainHeader isLoading={isLoading} onGenerate={runGeneration} />
-        <ConventionsConfigPanel
-          config={config}
-          notification={notification}
-        />
+        <ConventionsConfigPanel config={config} notification={notification} />
       </section>
 
       <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <FileCode2 className="h-3.5 w-3.5" /> Input Editor
@@ -287,47 +271,23 @@ export function ContractFlowWorkbench() {
         </article>
 
         <article className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-panel/90 p-3 backdrop-blur-xl">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-100">
-              {selectedOutputTab?.icon}
-              <span className="truncate">{selectedOutputTab?.label ?? "Output"}</span>
-            </div>
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowSettings((prev) => !prev)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${showSettings
-                    ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
-                    : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600"
-                  }`}
-              >
-                <Settings2 className="h-4 w-4" />
-                Settings
-              </button>
-              <SettingsPopoverPanel
-                config={config}
-                rootModelName={rootModelName}
-                showSettings={showSettings}
-                settingsTab={settingsTab}
-                error={error}
-                onCloseSettings={() => setShowSettings(false)}
-                onRootModelNameChange={setRootModelName}
-                onSettingsTabChange={setSettingsTab}
-                onUpdateConfig={updateConfig}
-              />
-            </div>
+          <div className="mb-3 flex min-h-11 min-w-0 items-center gap-2 text-sm font-semibold text-slate-100">
+            {headerIcon}
+            <span className="truncate">{headerLabel}</span>
           </div>
 
           <div className="relative min-h-0 flex flex-1 overflow-hidden rounded-lg border border-slate-800">
             <div className="relative min-w-0 flex-1 overflow-hidden">
-              <button
-                type="button"
-                onClick={copyCurrentOutput}
-                className="absolute right-16 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
-              >
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "Copied" : "Copy"}
-              </button>
+              {!showSettings ? (
+                <button
+                  type="button"
+                  onClick={copyCurrentOutput}
+                  className="absolute right-16 top-3 z-10 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs text-slate-200 shadow-sm hover:border-slate-500"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              ) : null}
               <MonacoEditor
                 height="100%"
                 language={outputLanguage}
@@ -337,37 +297,126 @@ export function ContractFlowWorkbench() {
               />
             </div>
 
-            <aside className="group/sidebar absolute inset-y-0 right-0 z-20 flex w-14 border-l border-slate-800 bg-slate-950/92 shadow-[-12px_0_24px_rgba(15,23,42,0.28)] transition-[width] duration-200 hover:w-48 focus-within:w-48">
-              <div className="flex w-full flex-col gap-1 p-2">
-                {outputTabs.map((tab) => (
-                  <SidebarOutputButton
-                    key={tab.key}
-                    active={outputTab === tab.key}
-                    onClick={() => setOutputTab(tab.key)}
-                    icon={tab.icon}
-                    label={tab.label}
+            {showSettings ? (
+              <aside className="absolute inset-y-0 right-0 z-20 flex w-[30rem] max-w-[92vw] border-l border-slate-800 bg-slate-950/95 shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
+                <div className="min-w-0 flex-1 border-r border-slate-800 bg-panel/95">
+                  <div className="flex h-full flex-col">
+                    <div className="border-b border-slate-800 px-4 py-3">
+                      <h2 className="flex items-center gap-2 text-sm font-semibold text-cyan-200">
+                        <Settings2 className="h-4 w-4" /> Configuration
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-400">Adjust generation rules without leaving the output context.</p>
+                    </div>
+                    <div className="tool-scroll flex-1 overflow-y-auto p-4">
+                      <SettingsPanelContent
+                        config={config}
+                        rootModelName={rootModelName}
+                        settingsTab={settingsTab}
+                        error={error}
+                        onRootModelNameChange={setRootModelName}
+                        onSettingsTabChange={setSettingsTab}
+                        onUpdateConfig={updateConfig}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex w-14 shrink-0 flex-col gap-2 bg-slate-950/90 p-2">
+                  <div className="flex flex-1 flex-col gap-1">
+                    {outputTabs.map((tab) => (
+                      <SidebarRailButton
+                        key={tab.key}
+                        active={false}
+                        onClick={() => selectOutput(tab.key)}
+                        icon={tab.icon}
+                        label={tab.label}
+                        expanded={false}
+                      />
+                    ))}
+                  </div>
+                  <SidebarRailButton
+                    active
+                    onClick={() => setShowSettings(false)}
+                    icon={<Settings2 className="h-4 w-4" />}
+                    label="Settings"
+                    alignBottom
+                    expanded
                   />
-                ))}
-              </div>
-            </aside>
+                </div>
+              </aside>
+            ) : (
+              <>
+                <div
+                  className="absolute inset-y-0 right-0 z-20 w-14"
+                  onMouseEnter={() => setIsOutputRailExpanded(true)}
+                  onMouseLeave={() => setIsOutputRailExpanded(false)}
+                >
+                  <div className="flex h-full w-14 flex-col gap-2 border-l border-slate-800 bg-slate-950/95 p-2 shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
+                    <div className="flex flex-1 flex-col gap-1">
+                      {outputTabs.map((tab) => (
+                        <SidebarRailButton
+                          key={tab.key}
+                          active={outputTab === tab.key}
+                          onClick={() => selectOutput(tab.key)}
+                          icon={tab.icon}
+                          label={tab.label}
+                          expanded={false}
+                        />
+                      ))}
+                    </div>
+                    <SidebarRailButton
+                      active={false}
+                      onClick={() => setShowSettings(true)}
+                      icon={<Settings2 className="h-4 w-4" />}
+                      label="Settings"
+                      alignBottom
+                      expanded={false}
+                    />
+                  </div>
+                </div>
+
+                {isOutputRailExpanded ? (
+                  <div
+                    className="absolute inset-y-2 right-14 z-30 w-44 rounded-l-xl border border-r-0 border-slate-800 bg-slate-950/98 p-2 shadow-[-16px_0_30px_rgba(15,23,42,0.34)]"
+                    onMouseEnter={() => setIsOutputRailExpanded(true)}
+                    onMouseLeave={() => setIsOutputRailExpanded(false)}
+                  >
+                    <div className="flex h-full flex-col gap-1">
+                      {outputTabs.map((tab) => (
+                        <SidebarRailButton
+                          key={tab.key}
+                          active={outputTab === tab.key}
+                          onClick={() => selectOutput(tab.key)}
+                          icon={tab.icon}
+                          label={tab.label}
+                          expanded
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </article>
       </section>
-
     </main>
   );
 }
 
-function SidebarOutputButton({
+function SidebarRailButton({
   active,
   onClick,
   icon,
-  label
+  label,
+  alignBottom = false,
+  expanded = false
 }: {
   active: boolean;
   onClick: () => void;
   icon: ReactNode;
   label: string;
+  alignBottom?: boolean;
+  expanded?: boolean;
 }) {
   return (
     <button
@@ -375,19 +424,18 @@ function SidebarOutputButton({
       onClick={onClick}
       title={label}
       aria-pressed={active}
-      className={`flex h-10 w-full items-center justify-center gap-0 overflow-hidden rounded-lg border px-3 text-sm transition group-hover/sidebar:justify-start group-hover/sidebar:gap-3 group-focus-within/sidebar:justify-start group-focus-within/sidebar:gap-3 ${active
-          ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
-          : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
-        }`}
+      className={`flex h-10 w-full items-center overflow-hidden rounded-lg border px-3 text-sm transition ${expanded ? "justify-start gap-3" : "justify-center gap-0"} ${alignBottom ? "mt-auto" : ""} ${active
+        ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
+        : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
+      }`}
     >
       <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
-      <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-150 group-hover/sidebar:max-w-[10rem] group-hover/sidebar:opacity-100 group-focus-within/sidebar:max-w-[10rem] group-focus-within/sidebar:opacity-100">
+      <span
+        className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-150 ${expanded ? "max-w-[10rem] opacity-100" : "max-w-0 opacity-0"}`}
+      >
         {label}
       </span>
     </button>
   );
 }
-
-
-
 
