@@ -30,6 +30,8 @@ interface CrudField {
 interface TemplateStrategy {
   renderFormHtml: (context: CrudGenerationContext) => string;
   renderListHtml: (context: CrudGenerationContext) => string;
+  renderFormStyles: (context: CrudGenerationContext) => string;
+  renderListStyles: (context: CrudGenerationContext) => string;
   listImports: string[];
   formImports: string[];
 }
@@ -46,19 +48,25 @@ const TEMPLATE_STRATEGIES: Record<UiFramework, TemplateStrategy> = {
     listImports: [],
     formImports: [],
     renderFormHtml: renderSemanticFormHtml,
-    renderListHtml: renderSemanticListHtml
+    renderListHtml: renderSemanticListHtml,
+    renderFormStyles: renderSemanticFormStyles,
+    renderListStyles: renderSemanticListStyles
   },
   material: {
     listImports: ["MatButtonModule"],
     formImports: ["MatButtonModule", "MatCheckboxModule", "MatFormFieldModule", "MatInputModule"],
     renderFormHtml: renderMaterialFormHtml,
-    renderListHtml: renderSemanticListHtml
+    renderListHtml: renderMaterialListHtml,
+    renderFormStyles: renderMaterialFormStyles,
+    renderListStyles: renderMaterialListStyles
   },
   tailwind: {
     listImports: [],
     formImports: [],
     renderFormHtml: renderTailwindFormHtml,
-    renderListHtml: renderTailwindListHtml
+    renderListHtml: renderTailwindListHtml,
+    renderFormStyles: renderTailwindFormStyles,
+    renderListStyles: renderTailwindListStyles
   }
 };
 
@@ -112,6 +120,7 @@ function renderListComponentTs(context: CrudGenerationContext): string {
   const strategy = TEMPLATE_STRATEGIES[context.config.uiFramework];
   const materialImports = renderMaterialImports(strategy.listImports);
   const componentImports = ["CommonModule", context.formComponentName, ...strategy.listImports].join(", ");
+  const styles = renderComponentStyles(strategy.renderListStyles(context));
 
   return [
     buildCompatibilityBanner(context.config.angularVersion, "component"),
@@ -126,7 +135,8 @@ function renderListComponentTs(context: CrudGenerationContext): string {
     `  selector: '${context.listSelector}',`,
     "  standalone: true,",
     `  imports: [${componentImports}],`,
-    `  templateUrl: './${context.resourceKebab}-list.component.html'`,
+    `  templateUrl: './${context.resourceKebab}-list.component.html',`,
+    styles,
     "})",
     `export class ${context.listComponentName} implements OnInit {`,
     `  private readonly service = inject(${context.serviceName});`,
@@ -195,6 +205,7 @@ function renderFormComponentTs(context: CrudGenerationContext): string {
   const strategy = TEMPLATE_STRATEGIES[context.config.uiFramework];
   const materialImports = renderMaterialImports(strategy.formImports);
   const componentImports = ["CommonModule", "ReactiveFormsModule", ...strategy.formImports].join(", ");
+  const styles = renderComponentStyles(strategy.renderFormStyles(context));
   const formControls = context.fields
     .map((field) => {
       const validators = field.validators.length ? `, [${field.validators.join(", ")}]` : "";
@@ -221,10 +232,11 @@ function renderFormComponentTs(context: CrudGenerationContext): string {
     `  selector: '${context.formSelector}',`,
     "  standalone: true,",
     `  imports: [${componentImports}],`,
-    `  templateUrl: './${context.resourceKebab}-form.component.html'`,
+    `  templateUrl: './${context.resourceKebab}-form.component.html',`,
+    styles,
     "})",
     `export class ${context.formComponentName} implements OnChanges {`,
-    `  private readonly fb = inject(FormBuilder);`,
+    "  private readonly fb = inject(FormBuilder);",
     `  private readonly service = inject(${context.serviceName});`,
     "",
     `  @Input() value: ${context.modelType} | null = null;`,
@@ -367,15 +379,66 @@ function renderSemanticListHtml(context: CrudGenerationContext): string {
     `      </tr>`,
     `    </thead>`,
     `    <tbody>`,
-    `      <tr *ngFor="let item of items; trackBy: trackByItem">`,
+    `      @for (item of items; track trackByItem($index, item)) {`,
+    `        <tr>`,
     cells,
-    `        <td>`,
-    `          <button type="button" (click)="startEdit(item)">Edit</button>`,
-    `          <button type="button" (click)="remove(item)">Delete</button>`,
-    `        </td>`,
-    `      </tr>`,
+    `          <td>`,
+    `            <button type="button" (click)="startEdit(item)">Edit</button>`,
+    `            <button type="button" (click)="remove(item)">Delete</button>`,
+    `          </td>`,
+    `        </tr>`,
+    `      } @empty {`,
+    `        <tr>`,
+    `          <td class="crud-empty-state" colspan="${context.fields.length + 1}">No records generated yet.</td>`,
+    `        </tr>`,
+    `      }`,
     `    </tbody>`,
     `  </table>`,
+    ``,
+    `  <${context.formSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.formSelector}>`,
+    `</section>`
+  ].join("\n");
+}
+
+function renderMaterialListHtml(context: CrudGenerationContext): string {
+  const headers = context.fields.map((field) => `          <th scope="col">${field.label}</th>`).join("\n");
+  const cells = context.fields.map((field) => `          <td>{{ item.${field.controlName} }}</td>`).join("\n");
+
+  return [
+    `<section class="crud-list-shell material-shell">`,
+    `  <header class="crud-list-header">`,
+    `    <div>`,
+    `      <h2>${toPascalCase(context.cleanName)} List</h2>`,
+    `      <p>Generated CRUD list wired to ${context.serviceName}.</p>`,
+    `    </div>`,
+    `    <button mat-flat-button color="primary" type="button" (click)="startCreate()">New ${toPascalCase(context.cleanName)}</button>`,
+    `  </header>`,
+    ``,
+    `  <div class="table-shell">`,
+    `    <table>`,
+    `      <thead>`,
+    `        <tr>`,
+    headers,
+    `          <th scope="col">Actions</th>`,
+    `        </tr>`,
+    `      </thead>`,
+    `      <tbody>`,
+    `        @for (item of items; track trackByItem($index, item)) {`,
+    `          <tr>`,
+    cells,
+    `            <td class="actions-cell">`,
+    `              <button mat-stroked-button type="button" (click)="startEdit(item)">Edit</button>`,
+    `              <button mat-stroked-button type="button" (click)="remove(item)">Delete</button>`,
+    `            </td>`,
+    `          </tr>`,
+    `        } @empty {`,
+    `          <tr>`,
+    `            <td class="crud-empty-state" colspan="${context.fields.length + 1}">No records generated yet.</td>`,
+    `          </tr>`,
+    `        }`,
+    `      </tbody>`,
+    `    </table>`,
+    `  </div>`,
     ``,
     `  <${context.formSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.formSelector}>`,
     `</section>`
@@ -409,15 +472,21 @@ function renderTailwindListHtml(context: CrudGenerationContext): string {
     `        </tr>`,
     `      </thead>`,
     `      <tbody class="divide-y divide-slate-800">`,
-    `        <tr *ngFor="let item of items; trackBy: trackByItem">`,
+    `        @for (item of items; track trackByItem($index, item)) {`,
+    `          <tr>`,
     cells,
-    `          <td class="px-4 py-3">`,
-    `            <div class="flex gap-2">`,
-    `              <button type="button" class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200" (click)="startEdit(item)">Edit</button>`,
-    `              <button type="button" class="rounded-md border border-rose-500/40 px-3 py-1.5 text-sm text-rose-200" (click)="remove(item)">Delete</button>`,
-    `            </div>`,
-    `          </td>`,
-    `        </tr>`,
+    `            <td class="px-4 py-3">`,
+    `              <div class="flex gap-2">`,
+    `                <button type="button" class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200" (click)="startEdit(item)">Edit</button>`,
+    `                <button type="button" class="rounded-md border border-rose-500/40 px-3 py-1.5 text-sm text-rose-200" (click)="remove(item)">Delete</button>`,
+    `              </div>`,
+    `            </td>`,
+    `          </tr>`,
+    `        } @empty {`,
+    `          <tr>`,
+    `            <td class="px-4 py-8 text-center text-sm text-slate-500" colspan="${context.fields.length + 1}">No records generated yet.</td>`,
+    `          </tr>`,
+    `        }`,
     `      </tbody>`,
     `    </table>`,
     `  </div>`,
@@ -430,11 +499,13 @@ function renderTailwindListHtml(context: CrudGenerationContext): string {
 function renderSemanticFormHtml(context: CrudGenerationContext): string {
   const fields = context.fields.map((field) => renderSemanticField(field)).join("\n\n");
   return [
-    `<form [formGroup]="form" (ngSubmit)="submit()">`,
+    `<form [formGroup]="form" (ngSubmit)="submit()" class="crud-form-shell">`,
     `  <fieldset>`,
     `    <legend>${toPascalCase(context.cleanName)} Form</legend>`,
+    `    <div class="crud-form-grid">`,
     fields,
-    `    <div>`,
+    `    </div>`,
+    `    <div class="crud-form-actions">`,
     `      <button type="submit">Save</button>`,
     `      <button type="button" (click)="cancel()">Cancel</button>`,
     `    </div>`,
@@ -465,15 +536,15 @@ function renderTailwindFormHtml(context: CrudGenerationContext): string {
 function renderMaterialFormHtml(context: CrudGenerationContext): string {
   const fields = context.fields.map((field) => renderMaterialField(field)).join("\n\n");
   return [
-    `<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">`,
-    `  <div>`,
+    `<form [formGroup]="form" (ngSubmit)="submit()" class="material-form-shell">`,
+    `  <div class="material-form-header">`,
     `    <h3>${toPascalCase(context.cleanName)} Form</h3>`,
     `    <p>Material-ready CRUD form with reactive controls.</p>`,
     `  </div>`,
-    `  <div class="grid gap-4 md:grid-cols-2">`,
+    `  <div class="material-form-grid">`,
     fields,
     `  </div>`,
-    `  <div class="flex gap-3">`,
+    `  <div class="material-form-actions">`,
     `    <button mat-flat-button color="primary" type="submit">Save</button>`,
     `    <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>`,
     `  </div>`,
@@ -484,18 +555,18 @@ function renderMaterialFormHtml(context: CrudGenerationContext): string {
 function renderSemanticField(field: CrudField): string {
   if (field.inputKind === "checkbox") {
     return [
-      `    <label>`,
-      `      <input type="checkbox" formControlName="${field.controlName}" />`,
-      `      ${field.label}`,
-      `    </label>`
+      `      <label class="crud-checkbox-field">`,
+      `        <input type="checkbox" formControlName="${field.controlName}" />`,
+      `        <span>${field.label}</span>`,
+      `      </label>`
     ].join("\n");
   }
 
   return [
-    `    <label>`,
-    `      <span>${field.label}</span>`,
-    `      <input type="${field.inputKind}" formControlName="${field.controlName}" />`,
-    `    </label>`
+    `      <label class="crud-input-field">`,
+    `        <span>${field.label}</span>`,
+    `        <input type="${field.inputKind}" formControlName="${field.controlName}" />`,
+    `      </label>`
   ].join("\n");
 }
 
@@ -530,6 +601,247 @@ function renderMaterialField(field: CrudField): string {
   ].join("\n");
 }
 
+function renderSemanticListStyles(): string {
+  return [
+    `:host {`,
+    `  display: block;`,
+    `}`,
+    ``,
+    `.crud-list-shell {`,
+    `  display: grid;`,
+    `  gap: 1.5rem;`,
+    `}`,
+    ``,
+    `.crud-list-header {`,
+    `  display: flex;`,
+    `  align-items: center;`,
+    `  justify-content: space-between;`,
+    `  gap: 1rem;`,
+    `}`,
+    ``,
+    `.crud-list-header h2 {`,
+    `  margin: 0;`,
+    `  font-size: 1.25rem;`,
+    `}`,
+    ``,
+    `.crud-list-header p {`,
+    `  margin: 0.35rem 0 0;`,
+    `  color: #475569;`,
+    `}`,
+    ``,
+    `table {`,
+    `  width: 100%;`,
+    `  border-collapse: collapse;`,
+    `  overflow: hidden;`,
+    `  border: 1px solid #dbe3ee;`,
+    `  border-radius: 0.9rem;`,
+    `  background: #ffffff;`,
+    `}`,
+    ``,
+    `th,`,
+    `td {`,
+    `  padding: 0.9rem 1rem;`,
+    `  border-bottom: 1px solid #e2e8f0;`,
+    `  text-align: left;`,
+    `  vertical-align: middle;`,
+    `}`,
+    ``,
+    `thead {`,
+    `  background: #f8fafc;`,
+    `}`,
+    ``,
+    `.crud-empty-state {`,
+    `  text-align: center;`,
+    `  color: #64748b;`,
+    `}`,
+    ``,
+    `button {`,
+    `  border: 1px solid #cbd5e1;`,
+    `  border-radius: 0.7rem;`,
+    `  background: #ffffff;`,
+    `  padding: 0.65rem 1rem;`,
+    `  font: inherit;`,
+    `  cursor: pointer;`,
+    `}`,
+    ``,
+    `td button + button {`,
+    `  margin-left: 0.5rem;`,
+    `}`
+  ].join("\n");
+}
+
+function renderSemanticFormStyles(): string {
+  return [
+    `:host {`,
+    `  display: block;`,
+    `}`,
+    ``,
+    `.crud-form-shell fieldset {`,
+    `  margin: 0;`,
+    `  padding: 1.5rem;`,
+    `  border: 1px solid #dbe3ee;`,
+    `  border-radius: 1rem;`,
+    `  display: grid;`,
+    `  gap: 1.25rem;`,
+    `  background: #ffffff;`,
+    `}`,
+    ``,
+    `.crud-form-shell legend {`,
+    `  padding: 0 0.35rem;`,
+    `  font-weight: 700;`,
+    `}`,
+    ``,
+    `.crud-form-grid {`,
+    `  display: grid;`,
+    `  gap: 1rem;`,
+    `  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));`,
+    `}`,
+    ``,
+    `.crud-input-field,`,
+    `.crud-checkbox-field {`,
+    `  display: grid;`,
+    `  gap: 0.5rem;`,
+    `}`,
+    ``,
+    `.crud-input-field input {`,
+    `  width: 100%;`,
+    `  border: 1px solid #cbd5e1;`,
+    `  border-radius: 0.75rem;`,
+    `  padding: 0.75rem 0.9rem;`,
+    `  font: inherit;`,
+    `}`,
+    ``,
+    `.crud-checkbox-field {`,
+    `  align-items: center;`,
+    `  grid-auto-flow: column;`,
+    `  justify-content: start;`,
+    `}`,
+    ``,
+    `.crud-form-actions {`,
+    `  display: flex;`,
+    `  gap: 0.75rem;`,
+    `}`,
+    ``,
+    `.crud-form-actions button {`,
+    `  border: 1px solid #cbd5e1;`,
+    `  border-radius: 0.75rem;`,
+    `  background: #ffffff;`,
+    `  padding: 0.75rem 1rem;`,
+    `  font: inherit;`,
+    `  cursor: pointer;`,
+    `}`
+  ].join("\n");
+}
+
+function renderMaterialListStyles(): string {
+  return [
+    `:host {`,
+    `  display: block;`,
+    `}`,
+    ``,
+    `.material-shell {`,
+    `  display: grid;`,
+    `  gap: 1.5rem;`,
+    `}`,
+    ``,
+    `.crud-list-header {`,
+    `  display: flex;`,
+    `  align-items: center;`,
+    `  justify-content: space-between;`,
+    `  gap: 1rem;`,
+    `}`,
+    ``,
+    `.table-shell {`,
+    `  overflow: hidden;`,
+    `  border-radius: 1rem;`,
+    `  border: 1px solid rgba(100, 116, 139, 0.18);`,
+    `}`,
+    ``,
+    `table {`,
+    `  width: 100%;`,
+    `  border-collapse: collapse;`,
+    `}`,
+    ``,
+    `th,`,
+    `td {`,
+    `  padding: 0.9rem 1rem;`,
+    `  border-bottom: 1px solid rgba(100, 116, 139, 0.16);`,
+    `  text-align: left;`,
+    `}`,
+    ``,
+    `.actions-cell {`,
+    `  display: flex;`,
+    `  gap: 0.75rem;`,
+    `}`,
+    ``,
+    `.crud-empty-state {`,
+    `  text-align: center;`,
+    `  opacity: 0.7;`,
+    `}`
+  ].join("\n");
+}
+
+function renderMaterialFormStyles(): string {
+  return [
+    `:host {`,
+    `  display: block;`,
+    `}`,
+    ``,
+    `.material-form-shell {`,
+    `  display: grid;`,
+    `  gap: 1.25rem;`,
+    `  padding: 1.5rem;`,
+    `  border-radius: 1rem;`,
+    `  border: 1px solid rgba(100, 116, 139, 0.18);`,
+    `}`,
+    ``,
+    `.material-form-header h3,`,
+    `.material-form-header p {`,
+    `  margin: 0;`,
+    `}`,
+    ``,
+    `.material-form-grid {`,
+    `  display: grid;`,
+    `  gap: 1rem;`,
+    `  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));`,
+    `}`,
+    ``,
+    `.material-form-grid mat-form-field {`,
+    `  width: 100%;`,
+    `}`,
+    ``,
+    `.material-form-actions {`,
+    `  display: flex;`,
+    `  gap: 0.75rem;`,
+    `}`
+  ].join("\n");
+}
+
+function renderTailwindListStyles(): string {
+  return [
+    `:host {`,
+    `  display: block;`,
+    `}`
+  ].join("\n");
+}
+
+function renderTailwindFormStyles(): string {
+  return [
+    `:host {`,
+    `  display: block;`,
+    `}`
+  ].join("\n");
+}
+
+function renderComponentStyles(styles: string): string {
+  const body = styles
+    .split("\n")
+    .map((line) => `    ${line}`)
+    .join("\n");
+
+  return `  styles: [\`\n${body}\n  \`]`;
+}
+
 function findIdProperty(model: ModelSpec, config: EngineConfig): string | null {
   const property = model.properties.find((item) => /(^id$|id$|_id$)/i.test(item.name));
   if (!property) return null;
@@ -537,6 +849,7 @@ function findIdProperty(model: ModelSpec, config: EngineConfig): string | null {
 }
 
 function renderMaterialImports(modules: string[]): string[] {
-  return Array.from(new Set(modules))
-    .map((moduleName) => `import { ${moduleName} } from '${MATERIAL_IMPORTS[moduleName]}';`);
+  return Array.from(new Set(modules)).map((moduleName) => `import { ${moduleName} } from '${MATERIAL_IMPORTS[moduleName]}';`);
 }
+
+

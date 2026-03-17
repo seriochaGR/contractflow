@@ -28,6 +28,13 @@ type OutputTab = "typescript" | "service" | "serviceDependencies" | "serviceMock
 type CrudComponentView = "list" | "form";
 type CopyTarget = "main" | "componentTs" | "componentHtml" | null;
 
+type OutputRailItem = {
+  key: OutputTab;
+  label: string;
+  icon: ReactNode;
+  enabled: boolean;
+};
+
 const EXAMPLES = {
   csharp: `public class UserDto
 {
@@ -71,7 +78,6 @@ export function ContractFlowWorkbench() {
   const [outputTab, setOutputTab] = useState<OutputTab>("typescript");
   const [crudComponentView, setCrudComponentView] = useState<CrudComponentView>("list");
   const [showSettings, setShowSettings] = useState(false);
-  const [isOutputRailExpanded, setIsOutputRailExpanded] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("contracts");
   const [error, setError] = useState("");
   const [notification, setNotification] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -269,9 +275,22 @@ export function ContractFlowWorkbench() {
   function selectOutput(tab: OutputTab) {
     setOutputTab(tab);
     setShowSettings(false);
-    setIsOutputRailExpanded(false);
     void trackMetric("output_selected", { output: tab as UsageMetricOutputKey });
   }
+
+  const outputRail = (
+    <OutputSidebarRail
+      outputTabs={outputTabs}
+      selectedTab={outputTab}
+      showSettings={showSettings}
+      onSelectOutput={selectOutput}
+      onOpenSettings={() => {
+        setShowSettings(true);
+        void trackMetric("settings_opened");
+      }}
+      onCloseSettings={() => setShowSettings(false)}
+    />
+  );
 
   return (
     <main className="mx-auto flex h-[calc(100vh-4rem)] max-w-[1600px] flex-col overflow-hidden px-4 py-4 md:px-6">
@@ -417,84 +436,12 @@ export function ContractFlowWorkbench() {
                     </div>
                   </div>
                 </div>
-                <div className="flex w-14 shrink-0 flex-col gap-2 bg-slate-950/90 p-2">
-                  <div className="flex flex-1 flex-col gap-1">
-                    {outputTabs.map((tab) => (
-                      <SidebarRailButton
-                        key={tab.key}
-                        active={false}
-                        onClick={() => selectOutput(tab.key)}
-                        icon={tab.icon}
-                        label={tab.label}
-                        expanded={false}
-                      />
-                    ))}
-                  </div>
-                  <SidebarRailButton
-                    active
-                    onClick={() => setShowSettings(false)}
-                    icon={<Settings2 className="h-4 w-4" />}
-                    label="Settings"
-                    alignBottom
-                    expanded
-                  />
-                </div>
+                {outputRail}
               </aside>
             ) : (
-              <>
-                <div
-                  className="absolute inset-y-0 right-0 z-20 w-14"
-                  onMouseEnter={() => setIsOutputRailExpanded(true)}
-                  onMouseLeave={() => setIsOutputRailExpanded(false)}
-                >
-                  <div className="flex h-full w-14 flex-col gap-2 border-l border-slate-800 bg-slate-950/95 p-2 shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
-                    <div className="flex flex-1 flex-col gap-1">
-                      {outputTabs.map((tab) => (
-                        <SidebarRailButton
-                          key={tab.key}
-                          active={outputTab === tab.key}
-                          onClick={() => selectOutput(tab.key)}
-                          icon={tab.icon}
-                          label={tab.label}
-                          expanded={false}
-                        />
-                      ))}
-                    </div>
-                    <SidebarRailButton
-                      active={false}
-                      onClick={() => {
-                        setShowSettings(true);
-                        void trackMetric("settings_opened");
-                      }}
-                      icon={<Settings2 className="h-4 w-4" />}
-                      label="Settings"
-                      alignBottom
-                      expanded={false}
-                    />
-                  </div>
-                </div>
-
-                {isOutputRailExpanded ? (
-                  <div
-                    className="absolute inset-y-2 right-14 z-30 w-44 rounded-l-xl border border-r-0 border-slate-800 bg-slate-950/98 p-2 shadow-[-16px_0_30px_rgba(15,23,42,0.34)]"
-                    onMouseEnter={() => setIsOutputRailExpanded(true)}
-                    onMouseLeave={() => setIsOutputRailExpanded(false)}
-                  >
-                    <div className="flex h-full flex-col gap-1">
-                      {outputTabs.map((tab) => (
-                        <SidebarRailButton
-                          key={tab.key}
-                          active={outputTab === tab.key}
-                          onClick={() => selectOutput(tab.key)}
-                          icon={tab.icon}
-                          label={tab.label}
-                          expanded
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </>
+              <div className="absolute inset-y-0 right-0 z-20">
+                {outputRail}
+              </div>
             )}
           </div>
         </article>
@@ -542,6 +489,45 @@ function SplitEditorPane({
   );
 }
 
+function OutputSidebarRail({
+  outputTabs,
+  selectedTab,
+  showSettings,
+  onSelectOutput,
+  onOpenSettings,
+  onCloseSettings
+}: {
+  outputTabs: OutputRailItem[];
+  selectedTab: OutputTab;
+  showSettings: boolean;
+  onSelectOutput: (tab: OutputTab) => void;
+  onOpenSettings: () => void;
+  onCloseSettings: () => void;
+}) {
+  return (
+    <div className="flex h-full w-14 shrink-0 flex-col gap-2 border-l border-slate-800 bg-slate-950/95 p-2 shadow-[-12px_0_24px_rgba(15,23,42,0.28)]">
+      <div className="flex flex-1 flex-col gap-1">
+        {outputTabs.map((tab) => (
+          <SidebarRailButton
+            key={tab.key}
+            active={!showSettings && selectedTab === tab.key}
+            onClick={() => onSelectOutput(tab.key)}
+            icon={tab.icon}
+            label={tab.label}
+          />
+        ))}
+      </div>
+      <SidebarRailButton
+        active={showSettings}
+        onClick={showSettings ? onCloseSettings : onOpenSettings}
+        icon={<Settings2 className="h-4 w-4" />}
+        label="Settings"
+        alignBottom
+      />
+    </div>
+  );
+}
+
 function contextualFilename(view: CrudComponentView, extension: "ts" | "html") {
   return view === "list" ? `list.component.${extension}` : `form.component.${extension}`;
 }
@@ -551,33 +537,34 @@ function SidebarRailButton({
   onClick,
   icon,
   label,
-  alignBottom = false,
-  expanded = false
+  alignBottom = false
 }: {
   active: boolean;
   onClick: () => void;
   icon: ReactNode;
   label: string;
   alignBottom?: boolean;
-  expanded?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-pressed={active}
-      className={`flex h-10 w-full items-center overflow-hidden rounded-lg border px-3 text-sm transition ${expanded ? "justify-start gap-3" : "justify-center gap-0"} ${alignBottom ? "mt-auto" : ""} ${active
-        ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
-        : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
-      }`}
-    >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
-      <span
-        className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-150 ${expanded ? "max-w-[10rem] opacity-100" : "max-w-0 opacity-0"}`}
+    <div className={`group/rail relative ${alignBottom ? "mt-auto" : ""}`}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        aria-pressed={active}
+        className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${active
+          ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-200"
+          : "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100"
+        }`}
       >
-        {label}
-      </span>
-    </button>
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
+      </button>
+      <div className="pointer-events-none absolute right-full top-1/2 z-30 mr-3 -translate-y-1/2 opacity-0 transition duration-150 group-hover/rail:opacity-100 group-focus-within/rail:opacity-100">
+        <div className="relative whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-slate-100 shadow-lg">
+          {label}
+          <span className="absolute left-full top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-r border-t border-slate-700 bg-slate-950" />
+        </div>
+      </div>
+    </div>
   );
 }
