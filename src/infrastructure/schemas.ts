@@ -48,6 +48,21 @@ export const convertSchema = z.object({
   config: engineConfigSchema.optional()
 });
 
+export const exportArchiveSchema = z.object({
+  archiveName: z.string().min(1, "Archive name is required.").max(80),
+  files: z.object({
+    contracts: z.string().optional(),
+    angularService: z.string().optional(),
+    angularServiceDependencies: z.string().optional(),
+    angularMockService: z.string().optional(),
+    jsonMocks: z.string().optional(),
+    listComponentTs: z.string().optional(),
+    listComponentHtml: z.string().optional(),
+    formComponentTs: z.string().optional(),
+    formComponentHtml: z.string().optional()
+  })
+});
+
 export const serviceSchema = z.object({
   models: z.array(
     z.object({
