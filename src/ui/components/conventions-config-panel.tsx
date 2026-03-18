@@ -40,6 +40,11 @@ interface SettingsSectionDefinition {
   helperText: string;
 }
 
+export interface ConventionLabelChip {
+  label: string;
+  icon: ReactNode;
+}
+
 const SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
   {
     key: "contracts",
@@ -83,7 +88,7 @@ const SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
   }
 ];
 
-export function ConventionsConfigPanel({ config, notification }: ConventionsConfigPanelProps) {
+export function getConventionLabels(config: EngineConfig): ConventionLabelChip[] {
   const enabledSections = [
     config.enableContracts ? "contracts" : null,
     config.enableServices ? "services + mock service" : null,
@@ -93,52 +98,38 @@ export function ConventionsConfigPanel({ config, notification }: ConventionsConf
     .filter(Boolean)
     .join(", ");
 
-  const conventions = [
-    { icon: Sparkles, label: `Prefix: ${config.modelPrefix || "(none)"}` },
-    { icon: Code2, label: `TS ${config.tsOutputKind}` },
-    { icon: Code2, label: `Angular ${config.angularVersion}` },
-    { icon: DatabaseZap, label: `Date -> ${config.dateMapping}` },
-    { icon: Settings2, label: `Inject ${config.injectionStyle}` },
-    { icon: Settings2, label: `Errors ${config.serviceErrorHandling}` },
+  return [
+    { label: `Prefix: ${config.modelPrefix || "(none)"}`, icon: <Sparkles className="h-3.5 w-3.5" /> },
+    { label: `TS ${config.tsOutputKind}`, icon: <Braces className="h-3.5 w-3.5" /> },
+    { label: `Angular ${config.angularVersion}`, icon: <Code2 className="h-3.5 w-3.5" /> },
+    { label: `Date -> ${config.dateMapping}`, icon: <DatabaseZap className="h-3.5 w-3.5" /> },
+    { label: `Inject ${config.injectionStyle}`, icon: <Code2 className="h-3.5 w-3.5" /> },
+    { label: `Errors ${config.serviceErrorHandling}`, icon: <Code2 className="h-3.5 w-3.5" /> },
     {
-      icon: Settings2,
-      label: `Deps ${config.serviceDependencies.length ? formatDependencyLabels(config.serviceDependencies) : "none"}`
+      label: `Deps ${config.serviceDependencies.length ? formatDependencyLabels(config.serviceDependencies) : "none"}`,
+      icon: <Settings2 className="h-3.5 w-3.5" />
     },
     {
-      icon: FlaskConical,
-      label: `Mock ${config.mockServiceSuffix} • ${config.mockServiceSeedCount} seed • ${config.mockServiceLatencyMs}ms`
+      label: `Mock ${config.mockServiceSuffix} • ${config.mockServiceSeedCount} seed • ${config.mockServiceLatencyMs}ms`,
+      icon: <FlaskConical className="h-3.5 w-3.5" />
     },
-    { icon: Code2, label: `UI ${config.uiFramework}` },
-    { icon: FlaskConical, label: `Enabled: ${enabledSections || "none"}` }
+    { label: `UI ${config.uiFramework}`, icon: <Sparkles className="h-3.5 w-3.5" /> },
+    { label: `Enabled: ${enabledSections || "none"}`, icon: <Check className="h-3.5 w-3.5" /> }
   ];
+}
 
-  return (
-    <>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {conventions.map((item) => (
-          <span
-            key={item.label}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs text-slate-300"
-          >
-            <item.icon className="h-3.5 w-3.5 text-cyan-300" />
-            {item.label}
-          </span>
-        ))}
-      </div>
-
-      {notification ? (
-        <div
-          className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
-            notification.kind === "success"
-              ? "border-emerald-400/40 bg-emerald-900/20 text-emerald-200"
-              : "border-rose-500/40 bg-rose-900/20 text-rose-300"
-          }`}
-        >
-          {notification.message}
-        </div>
-      ) : null}
-    </>
-  );
+export function ConventionsConfigPanel({ notification }: ConventionsConfigPanelProps) {
+  return notification ? (
+    <div
+      className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+        notification.kind === "success"
+          ? "border-emerald-400/40 bg-emerald-900/20 text-emerald-200"
+          : "border-rose-500/40 bg-rose-900/20 text-rose-300"
+      }`}
+    >
+      {notification.message}
+    </div>
+  ) : null;
 }
 
 export function SettingsPanelContent({
@@ -661,5 +652,6 @@ function MultiSelectDropdown({
     </div>
   );
 }
+
 
 

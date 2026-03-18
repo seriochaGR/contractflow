@@ -8,9 +8,11 @@ import { AngularCrudComponentArtifacts, defaultEngineConfig, EngineConfig, Sourc
 import type { UsageMetricEventName, UsageMetricOutputKey } from "@/domain/usage-metrics";
 import { AppMainHeader } from "@/ui/components/app-main-header";
 import {
+  ConventionLabelChip,
   ConventionsConfigPanel,
   SettingsPanelContent,
-  SettingsTab
+  SettingsTab,
+  getConventionLabels
 } from "@/ui/components/conventions-config-panel";
 import { useProjectConfig } from "@/ui/providers/project-config-provider";
 
@@ -94,7 +96,7 @@ export function ContractFlowWorkbench() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [showOutputFullscreen, setShowOutputFullscreen] = useState(false);
-  const [showCrudMeta, setShowCrudMeta] = useState(false);
+  const [showAppMeta, setShowAppMeta] = useState(false);
   const [archiveName, setArchiveName] = useState("contractflow-export");
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -215,6 +217,7 @@ export function ContractFlowWorkbench() {
   const inputLanguage = sourceType === "json" ? "json" : "csharp";
   const canDownloadArchive = Boolean(output);
   const canFullscreenOutput = !showSettings;
+  const conventionLabels = useMemo(() => getConventionLabels(config), [config]);
 
   async function trackMetric(
     name: UsageMetricEventName,
@@ -493,8 +496,6 @@ export function ContractFlowWorkbench() {
                     onSelectView={setCrudComponentView}
                     onSelectFile={setCrudComponentFile}
                     onCopy={copyValue}
-                    showMeta={showCrudMeta}
-                    onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
                   />
                 ) : (
                   <MonacoEditor
@@ -541,6 +542,8 @@ export function ContractFlowWorkbench() {
             </div>
           </aside>
         </section>
+
+        <AppEditorFooterMeta labels={conventionLabels} expanded={showAppMeta} onToggle={() => setShowAppMeta((prev) => !prev)} />
       </main>
 
       {showOutputFullscreen ? (
@@ -587,8 +590,6 @@ export function ContractFlowWorkbench() {
                   onSelectView={setCrudComponentView}
                   onSelectFile={setCrudComponentFile}
                   onCopy={copyValue}
-                  showMeta={showCrudMeta}
-                  onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
                 />
               ) : (
                 <div className="h-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
@@ -675,9 +676,7 @@ function CrudComponentsWorkspace({
   copiedTarget,
   onSelectView,
   onSelectFile,
-  onCopy,
-  showMeta,
-  onToggleMeta
+  onCopy
 }: {
   selectedView: CrudComponentView;
   selectedFile: CrudComponentFile;
@@ -686,8 +685,7 @@ function CrudComponentsWorkspace({
   copiedTarget: CopyTarget;
   onSelectView: (view: CrudComponentView) => void;
   onSelectFile: (file: CrudComponentFile) => void;
-  onCopy: (target: CopyTarget, value: string) => Promise<void>;  showMeta: boolean;
-  onToggleMeta: () => void;
+  onCopy: (target: CopyTarget, value: string) => Promise<void>;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-950/60">
@@ -710,7 +708,6 @@ function CrudComponentsWorkspace({
           selectedKey={selectedFile}
           onSelect={(key) => onSelectFile(key as CrudComponentFile)}
         />
-
       </div>
 
       <div className="min-h-0 flex-1">
@@ -720,30 +717,6 @@ function CrudComponentsWorkspace({
           value={selectedCodeFile.value}
           copied={copiedTarget === selectedCodeFile.copyTarget}
           onCopy={() => void onCopy(selectedCodeFile.copyTarget, selectedCodeFile.value)}
-          footer={
-            <button
-              type="button"
-              onClick={onToggleMeta}
-              className="flex w-full items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/90 px-3 py-2 text-left text-xs text-slate-400 hover:border-slate-700"
-            >
-              <div className="min-w-0">
-                <div className="font-medium text-slate-300">Component meta</div>
-                <div className="truncate text-[11px] text-slate-500">
-                  {selectedOutput.baseName} · {selectedCodeFile.label} · {selectedOutput.title}
-                </div>
-              </div>
-              {showMeta ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 shrink-0" />}
-            </button>
-          }
-          footerExpandedContent={
-            showMeta ? (
-              <div className="grid gap-2 rounded-md border border-slate-800 bg-slate-950/80 px-3 py-3 text-xs text-slate-400 md:grid-cols-3">
-                <MetaItem label="Component" value={selectedOutput.title} />
-                <MetaItem label="Base Name" value={selectedOutput.baseName} />
-                <MetaItem label="Visible File" value={selectedCodeFile.label} />
-              </div>
-            ) : null
-          }
         />
       </div>
     </div>
@@ -755,17 +728,13 @@ function SplitEditorPane({
   language,
   value,
   copied,
-  onCopy,
-  footer,
-  footerExpandedContent
+  onCopy
 }: {
   label: string;
   language: string;
   value: string;
   copied: boolean;
   onCopy: () => void;
-  footer?: ReactNode;
-  footerExpandedContent?: ReactNode;
 }) {
   return (
     <div className="min-h-0 flex h-full flex-col overflow-hidden bg-slate-950">
@@ -789,9 +758,46 @@ function SplitEditorPane({
           options={{ ...editorOptions, readOnly: true }}
         />
       </div>
-      {footer ? <div className="border-t border-slate-800 p-2">{footer}</div> : null}
-      {footerExpandedContent ? <div className="border-t border-slate-800 p-2">{footerExpandedContent}</div> : null}
     </div>
+  );
+}
+
+function AppEditorFooterMeta({
+  labels,
+  expanded,
+  onToggle
+}: {
+  labels: ConventionLabelChip[];
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <footer className="mt-4 rounded-2xl border border-slate-800 bg-panel/90 p-2 backdrop-blur-xl">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-left text-xs text-slate-400 hover:border-slate-700"
+      >
+        <div className="min-w-0">
+          <div className="font-medium text-slate-300">Conventions Summary</div>
+          <div className="truncate text-[11px] text-slate-500">Active generation rules moved from the header into the global editor footer.</div>
+        </div>
+        {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 shrink-0" />}
+      </button>
+      {expanded ? (
+        <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-3">
+          {labels.map((item) => (
+            <span
+              key={item.label}
+              className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-cyan-100"
+            >
+              {item.icon}
+              {item.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </footer>
   );
 }
 
@@ -816,15 +822,6 @@ function SegmentedPills({
           {option.label}
         </button>
       ))}
-    </div>
-  );
-}
-
-function MetaItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="truncate text-slate-200">{value}</div>
     </div>
   );
 }
@@ -864,7 +861,6 @@ function getCrudFileDescriptor(
       };
   }
 }
-
 function OutputSidebarRail({
   outputTabs,
   selectedTab,
@@ -946,6 +942,18 @@ function buildDefaultArchiveName(value: string): string {
   const sanitized = toKebabCase(value.trim() || "contractflow-export").replace(/^-+|-+$/g, "");
   return sanitized || "contractflow-export";
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

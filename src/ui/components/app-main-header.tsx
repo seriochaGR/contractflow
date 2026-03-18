@@ -10,7 +10,7 @@ export function AppMainHeader({ isLoading, onGenerate }: AppMainHeaderProps) {
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-cyan-200">ContractFlow Studio</h1>
-        <p className="text-sm text-slate-300">Tool for C#, JSON, TypeScript contracts, services, and mocks.</p>
+        <p className="text-sm text-slate-300">Tool for C#, JSON, TypeScript contracts, services, components, and mocks.</p>
       </div>
       <div className="flex items-center gap-2">
         <button
@@ -26,3 +26,5 @@ export function AppMainHeader({ isLoading, onGenerate }: AppMainHeaderProps) {
     </div>
   );
 }
+
+
