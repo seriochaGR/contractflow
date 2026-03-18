@@ -93,7 +93,7 @@ export function ContractFlowWorkbench() {
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
-  const [showCrudFullscreen, setShowCrudFullscreen] = useState(false);
+  const [showOutputFullscreen, setShowOutputFullscreen] = useState(false);
   const [showCrudMeta, setShowCrudMeta] = useState(false);
   const [archiveName, setArchiveName] = useState("contractflow-export");
   const [isDownloading, setIsDownloading] = useState(false);
@@ -214,6 +214,7 @@ export function ContractFlowWorkbench() {
   const outputLanguage = outputTab === "mocks" ? "json" : "typescript";
   const inputLanguage = sourceType === "json" ? "json" : "csharp";
   const canDownloadArchive = Boolean(output);
+  const canFullscreenOutput = !showSettings;
 
   async function trackMetric(
     name: UsageMetricEventName,
@@ -439,18 +440,32 @@ export function ContractFlowWorkbench() {
                 {headerIcon}
                 <span className="truncate">{headerLabel}</span>
               </div>
-              <button
-                type="button"
-                onClick={openDownloadDialog}
-                disabled={!canDownloadArchive}
-                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs ${canDownloadArchive
-                  ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-                  : "cursor-not-allowed border-slate-800 bg-slate-900/60 text-slate-500"
-                }`}
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download Zip
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOutputFullscreen(true)}
+                  disabled={!canFullscreenOutput}
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs ${canFullscreenOutput
+                    ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                    : "cursor-not-allowed border-slate-800 bg-slate-900/60 text-slate-500"
+                  }`}
+                >
+                  <Expand className="h-3.5 w-3.5" />
+                  Fullscreen
+                </button>
+                <button
+                  type="button"
+                  onClick={openDownloadDialog}
+                  disabled={!canDownloadArchive}
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs ${canDownloadArchive
+                    ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                    : "cursor-not-allowed border-slate-800 bg-slate-900/60 text-slate-500"
+                  }`}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Zip
+                </button>
+              </div>
             </div>
 
             <div className="relative min-h-0 flex flex-1 overflow-hidden rounded-lg border border-slate-800">
@@ -478,7 +493,6 @@ export function ContractFlowWorkbench() {
                     onSelectView={setCrudComponentView}
                     onSelectFile={setCrudComponentFile}
                     onCopy={copyValue}
-                    onExpand={() => setShowCrudFullscreen(true)}
                     showMeta={showCrudMeta}
                     onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
                   />
@@ -529,36 +543,64 @@ export function ContractFlowWorkbench() {
         </section>
       </main>
 
-      {showCrudFullscreen ? (
+      {showOutputFullscreen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/95 p-4 backdrop-blur-sm">
           <div className="mx-auto flex h-full w-full max-w-[1800px] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-panel/95 shadow-2xl">
             <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-4 py-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-100">CRUD Components Workspace</h2>
-                <p className="mt-1 text-xs text-slate-400">Expanded view for reading and copying generated Angular component files.</p>
+                <h2 className="text-sm font-semibold text-slate-100">{outputTab === "components" ? "CRUD Components Workspace" : `${headerLabel} Output`}</h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  {outputTab === "components"
+                    ? "Expanded view for reading and copying generated Angular component files."
+                    : "Expanded code view for the selected output."}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowCrudFullscreen(false)}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
-              >
-                <Minimize2 className="h-3.5 w-3.5" />
-                Close Fullscreen
-              </button>
+              <div className="flex items-center gap-2">
+                {outputTab !== "components" ? (
+                  <button
+                    type="button"
+                    onClick={() => void copyValue("main", outputValue)}
+                    className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+                  >
+                    {copiedTarget === "main" ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedTarget === "main" ? "Copied" : "Copy"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setShowOutputFullscreen(false)}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+                >
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  Close Fullscreen
+                </button>
+              </div>
             </div>
             <div className="min-h-0 flex-1 p-4">
-              <CrudComponentsWorkspace
-                selectedView={crudComponentView}
-                selectedFile={crudComponentFile}
-                selectedOutput={selectedCrudOutput}
-                selectedCodeFile={selectedCrudFile}
-                copiedTarget={copiedTarget}
-                onSelectView={setCrudComponentView}
-                onSelectFile={setCrudComponentFile}
-                onCopy={copyValue}
-                showMeta={showCrudMeta}
-                onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
-              />
+              {outputTab === "components" ? (
+                <CrudComponentsWorkspace
+                  selectedView={crudComponentView}
+                  selectedFile={crudComponentFile}
+                  selectedOutput={selectedCrudOutput}
+                  selectedCodeFile={selectedCrudFile}
+                  copiedTarget={copiedTarget}
+                  onSelectView={setCrudComponentView}
+                  onSelectFile={setCrudComponentFile}
+                  onCopy={copyValue}
+                  showMeta={showCrudMeta}
+                  onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
+                />
+              ) : (
+                <div className="h-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+                  <MonacoEditor
+                    height="100%"
+                    language={outputLanguage}
+                    theme="vs-dark"
+                    value={outputValue}
+                    options={{ ...editorOptions, readOnly: true }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -634,7 +676,6 @@ function CrudComponentsWorkspace({
   onSelectView,
   onSelectFile,
   onCopy,
-  onExpand,
   showMeta,
   onToggleMeta
 }: {
@@ -645,9 +686,7 @@ function CrudComponentsWorkspace({
   copiedTarget: CopyTarget;
   onSelectView: (view: CrudComponentView) => void;
   onSelectFile: (file: CrudComponentFile) => void;
-  onCopy: (target: CopyTarget, value: string) => Promise<void>;
-  onExpand?: () => void;
-  showMeta: boolean;
+  onCopy: (target: CopyTarget, value: string) => Promise<void>;  showMeta: boolean;
   onToggleMeta: () => void;
 }) {
   return (
@@ -671,16 +710,7 @@ function CrudComponentsWorkspace({
           selectedKey={selectedFile}
           onSelect={(key) => onSelectFile(key as CrudComponentFile)}
         />
-        {onExpand ? (
-          <button
-            type="button"
-            onClick={onExpand}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
-          >
-            <Expand className="h-3.5 w-3.5" />
-            Fullscreen
-          </button>
-        ) : null}
+
       </div>
 
       <div className="min-h-0 flex-1">
@@ -916,6 +946,19 @@ function buildDefaultArchiveName(value: string): string {
   const sanitized = toKebabCase(value.trim() || "contractflow-export").replace(/^-+|-+$/g, "");
   return sanitized || "contractflow-export";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
