@@ -23,10 +23,16 @@ export interface ModelSpec {
 }
 
 export interface AngularCrudComponentArtifacts {
-  listTs: string;
-  listHtml: string;
-  formTs: string;
-  formHtml: string;
+  componentBaseName: string;
+  componentTs: string;
+  componentHtml: string;
+  componentCss: string;
+  componentSpec: string;
+  editorBaseName: string;
+  editorTs: string;
+  editorHtml: string;
+  editorCss: string;
+  editorSpec: string;
 }
 
 export interface EngineConfig {
@@ -97,3 +103,4 @@ export function withDefaults(config?: Partial<EngineConfig>): EngineConfig {
     ...config
   };
 }
+

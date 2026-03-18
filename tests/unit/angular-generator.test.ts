@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { generateMockService, generateService } from "@/application/engine";
+import { generateAngularComponents } from "@/domain/angular-component-generator";
 import { ModelSpec } from "@/domain/types";
 
 const models: ModelSpec[] = [
@@ -198,3 +199,76 @@ describe("Angular service generator", () => {
     expect(mockService).toContain("private readonly idKey: string | null = 'id';");
   });
 });
+
+describe("Angular CRUD component generator", () => {
+  test("uses external template, style and spec files with standard component names", () => {
+    const artifacts = generateAngularComponents(models, {
+      modelPrefix: "I",
+      angularVersion: "21",
+      camelCaseProperties: true,
+      injectionStyle: "inject",
+      serviceUseSignals: false,
+      serviceErrorHandling: "catchError",
+      serviceSuffix: "Service",
+      mockServiceSuffix: "MockService",
+      uiFramework: "none",
+      enableContracts: true,
+      enableServices: true,
+      enableComponents: true,
+      enableMocks: true,
+      dateMapping: "string",
+      nullableAsUnion: true,
+      serviceDependencies: [],
+      serviceExtendsBaseApi: false,
+      apiUrlPattern: "/api/{resource}",
+      mockServiceLatencyMs: 150,
+      mockServiceSeedCount: 2,
+      mockServiceAutoIds: true
+    });
+
+    expect(artifacts.componentBaseName).toBe("user.component");
+    expect(artifacts.editorBaseName).toBe("user-editor.component");
+    expect(artifacts.componentTs).toContain("export class UserComponent");
+    expect(artifacts.componentTs).toContain("templateUrl: './user.component.html'");
+    expect(artifacts.componentTs).toContain("styleUrl: './user.component.css'");
+    expect(artifacts.componentTs).not.toContain("ListComponent");
+    expect(artifacts.editorTs).toContain("export class UserEditorComponent");
+    expect(artifacts.editorTs).toContain("templateUrl: './user-editor.component.html'");
+    expect(artifacts.editorTs).toContain("styleUrl: './user-editor.component.css'");
+    expect(artifacts.editorTs).not.toContain("FormComponent");
+  });
+
+  test("generates basic spec files for both CRUD components", () => {
+    const artifacts = generateAngularComponents(models, {
+      modelPrefix: "I",
+      angularVersion: "21",
+      camelCaseProperties: true,
+      injectionStyle: "inject",
+      serviceUseSignals: false,
+      serviceErrorHandling: "catchError",
+      serviceSuffix: "Service",
+      mockServiceSuffix: "MockService",
+      uiFramework: "none",
+      enableContracts: true,
+      enableServices: true,
+      enableComponents: true,
+      enableMocks: true,
+      dateMapping: "string",
+      nullableAsUnion: true,
+      serviceDependencies: [],
+      serviceExtendsBaseApi: false,
+      apiUrlPattern: "/api/{resource}",
+      mockServiceLatencyMs: 150,
+      mockServiceSeedCount: 2,
+      mockServiceAutoIds: true
+    });
+
+    expect(artifacts.componentSpec).toContain("describe('UserComponent'");
+    expect(artifacts.componentSpec).toContain("it('should create'");
+    expect(artifacts.componentSpec).toContain("it('should load items on init'");
+    expect(artifacts.editorSpec).toContain("describe('UserEditorComponent'");
+    expect(artifacts.editorSpec).toContain("it('should create'");
+    expect(artifacts.editorSpec).toContain("it('should emit cancel'");
+  });
+});
+

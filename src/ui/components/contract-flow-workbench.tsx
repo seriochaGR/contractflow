@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from "react";
-import { Braces, Check, Code2, Copy, Download, FileCode2, FlaskConical, Settings2, Upload } from "lucide-react";
+import { Braces, Check, ChevronDown, ChevronUp, Code2, Copy, Download, Expand, FileCode2, FlaskConical, Minimize2, Settings2, Upload } from "lucide-react";
 import { toKebabCase } from "@/domain/naming";
 import { AngularCrudComponentArtifacts, defaultEngineConfig, EngineConfig, SourceType } from "@/domain/types";
 import type { UsageMetricEventName, UsageMetricOutputKey } from "@/domain/usage-metrics";
@@ -26,8 +26,9 @@ interface EngineResponse {
 }
 
 type OutputTab = "typescript" | "service" | "serviceDependencies" | "serviceMock" | "components" | "mocks";
-type CrudComponentView = "list" | "form";
-type CopyTarget = "main" | "componentTs" | "componentHtml" | null;
+type CrudComponentView = "component" | "editor";
+type CrudComponentFile = "ts" | "html" | "css" | "spec";
+type CopyTarget = "main" | "componentTs" | "componentHtml" | "componentCss" | "componentSpec" | null;
 
 type OutputRailItem = {
   key: OutputTab;
@@ -53,10 +54,16 @@ const EXAMPLES = {
 };
 
 const EMPTY_CRUD_COMPONENTS: AngularCrudComponentArtifacts = {
-  listTs: "// CRUD list component output",
-  listHtml: "<!-- CRUD list template output -->",
-  formTs: "// CRUD form component output",
-  formHtml: "<!-- CRUD form template output -->"
+  componentBaseName: "entity.component",
+  componentTs: "// CRUD component output",
+  componentHtml: "<!-- CRUD component template output -->",
+  componentCss: "/* CRUD component styles output */",
+  componentSpec: "// CRUD component spec output",
+  editorBaseName: "entity-editor.component",
+  editorTs: "// CRUD editor output",
+  editorHtml: "<!-- CRUD editor template output -->",
+  editorCss: "/* CRUD editor styles output */",
+  editorSpec: "// CRUD editor spec output"
 };
 
 const editorOptions = {
@@ -77,7 +84,8 @@ export function ContractFlowWorkbench() {
   const [config, setConfig] = useState<EngineConfig>(defaultEngineConfig);
   const [output, setOutput] = useState<EngineResponse | null>(null);
   const [outputTab, setOutputTab] = useState<OutputTab>("typescript");
-  const [crudComponentView, setCrudComponentView] = useState<CrudComponentView>("list");
+  const [crudComponentView, setCrudComponentView] = useState<CrudComponentView>("component");
+  const [crudComponentFile, setCrudComponentFile] = useState<CrudComponentFile>("ts");
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("contracts");
   const [error, setError] = useState("");
@@ -85,6 +93,8 @@ export function ContractFlowWorkbench() {
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showCrudFullscreen, setShowCrudFullscreen] = useState(false);
+  const [showCrudMeta, setShowCrudMeta] = useState(false);
   const [archiveName, setArchiveName] = useState("contractflow-export");
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -169,9 +179,24 @@ export function ContractFlowWorkbench() {
 
   const crudComponents = output?.angularCrudComponents ?? EMPTY_CRUD_COMPONENTS;
   const selectedCrudOutput =
-    crudComponentView === "list"
-      ? { title: "List Component", ts: crudComponents.listTs, html: crudComponents.listHtml }
-      : { title: "Form Component", ts: crudComponents.formTs, html: crudComponents.formHtml };
+    crudComponentView === "component"
+      ? {
+          title: "Primary Component",
+          baseName: crudComponents.componentBaseName,
+          ts: crudComponents.componentTs,
+          html: crudComponents.componentHtml,
+          css: crudComponents.componentCss,
+          spec: crudComponents.componentSpec
+        }
+      : {
+          title: "Editor Component",
+          baseName: crudComponents.editorBaseName,
+          ts: crudComponents.editorTs,
+          html: crudComponents.editorHtml,
+          css: crudComponents.editorCss,
+          spec: crudComponents.editorSpec
+        };
+  const selectedCrudFile = getCrudFileDescriptor(selectedCrudOutput, crudComponentFile);
 
   const outputValue =
     enabledOutputTabs.length === 0
@@ -306,10 +331,16 @@ export function ContractFlowWorkbench() {
             angularServiceDependencies: output.angularServiceDependencies,
             angularMockService: output.angularMockService,
             jsonMocks: output.jsonMocks,
-            listComponentTs: output.angularCrudComponents.listTs,
-            listComponentHtml: output.angularCrudComponents.listHtml,
-            formComponentTs: output.angularCrudComponents.formTs,
-            formComponentHtml: output.angularCrudComponents.formHtml
+            componentBaseName: output.angularCrudComponents.componentBaseName,
+            componentTs: output.angularCrudComponents.componentTs,
+            componentHtml: output.angularCrudComponents.componentHtml,
+            componentCss: output.angularCrudComponents.componentCss,
+            componentSpec: output.angularCrudComponents.componentSpec,
+            editorBaseName: output.angularCrudComponents.editorBaseName,
+            editorTs: output.angularCrudComponents.editorTs,
+            editorHtml: output.angularCrudComponents.editorHtml,
+            editorCss: output.angularCrudComponents.editorCss,
+            editorSpec: output.angularCrudComponents.editorSpec
           }
         })
       });
@@ -438,44 +469,19 @@ export function ContractFlowWorkbench() {
                 {showSettings ? (
                   <div className="h-full" />
                 ) : outputTab === "components" ? (
-                  <div className="flex h-full min-h-0 flex-col bg-slate-950/60">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-3 py-2">
-                      <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900/80 p-1 text-sm">
-                        <button
-                          type="button"
-                          onClick={() => setCrudComponentView("list")}
-                          className={`rounded-md px-3 py-1.5 ${crudComponentView === "list" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
-                        >
-                          List Component
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCrudComponentView("form")}
-                          className={`rounded-md px-3 py-1.5 ${crudComponentView === "form" ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
-                        >
-                          Form Component
-                        </button>
-                      </div>
-                      <div className="text-xs text-slate-400">{selectedCrudOutput.title}</div>
-                    </div>
-
-                    <div className="grid min-h-0 flex-1 gap-px bg-slate-800 lg:grid-cols-2">
-                      <SplitEditorPane
-                        label={`${contextualFilename(crudComponentView, "ts")}`}
-                        language="typescript"
-                        value={selectedCrudOutput.ts}
-                        copied={copiedTarget === "componentTs"}
-                        onCopy={() => void copyValue("componentTs", selectedCrudOutput.ts)}
-                      />
-                      <SplitEditorPane
-                        label={`${contextualFilename(crudComponentView, "html")}`}
-                        language="html"
-                        value={selectedCrudOutput.html}
-                        copied={copiedTarget === "componentHtml"}
-                        onCopy={() => void copyValue("componentHtml", selectedCrudOutput.html)}
-                      />
-                    </div>
-                  </div>
+                  <CrudComponentsWorkspace
+                    selectedView={crudComponentView}
+                    selectedFile={crudComponentFile}
+                    selectedOutput={selectedCrudOutput}
+                    selectedCodeFile={selectedCrudFile}
+                    copiedTarget={copiedTarget}
+                    onSelectView={setCrudComponentView}
+                    onSelectFile={setCrudComponentFile}
+                    onCopy={copyValue}
+                    onExpand={() => setShowCrudFullscreen(true)}
+                    showMeta={showCrudMeta}
+                    onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
+                  />
                 ) : (
                   <MonacoEditor
                     height="100%"
@@ -522,6 +528,41 @@ export function ContractFlowWorkbench() {
           </aside>
         </section>
       </main>
+
+      {showCrudFullscreen ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 p-4 backdrop-blur-sm">
+          <div className="mx-auto flex h-full w-full max-w-[1800px] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-panel/95 shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-4 py-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-100">CRUD Components Workspace</h2>
+                <p className="mt-1 text-xs text-slate-400">Expanded view for reading and copying generated Angular component files.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCrudFullscreen(false)}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+              >
+                <Minimize2 className="h-3.5 w-3.5" />
+                Close Fullscreen
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 p-4">
+              <CrudComponentsWorkspace
+                selectedView={crudComponentView}
+                selectedFile={crudComponentFile}
+                selectedOutput={selectedCrudOutput}
+                selectedCodeFile={selectedCrudFile}
+                copiedTarget={copiedTarget}
+                onSelectView={setCrudComponentView}
+                onSelectFile={setCrudComponentFile}
+                onCopy={copyValue}
+                showMeta={showCrudMeta}
+                onToggleMeta={() => setShowCrudMeta((prev) => !prev)}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showDownloadDialog ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
@@ -584,21 +625,120 @@ export function ContractFlowWorkbench() {
   );
 }
 
+function CrudComponentsWorkspace({
+  selectedView,
+  selectedFile,
+  selectedOutput,
+  selectedCodeFile,
+  copiedTarget,
+  onSelectView,
+  onSelectFile,
+  onCopy,
+  onExpand,
+  showMeta,
+  onToggleMeta
+}: {
+  selectedView: CrudComponentView;
+  selectedFile: CrudComponentFile;
+  selectedOutput: { title: string; baseName: string; ts: string; html: string; css: string; spec: string };
+  selectedCodeFile: { label: string; language: string; value: string; copyTarget: Exclude<CopyTarget, "main" | null> };
+  copiedTarget: CopyTarget;
+  onSelectView: (view: CrudComponentView) => void;
+  onSelectFile: (file: CrudComponentFile) => void;
+  onCopy: (target: CopyTarget, value: string) => Promise<void>;
+  onExpand?: () => void;
+  showMeta: boolean;
+  onToggleMeta: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-slate-950/60">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-2">
+        <SegmentedPills
+          options={[
+            { key: "component", label: "Primary" },
+            { key: "editor", label: "Editor" }
+          ]}
+          selectedKey={selectedView}
+          onSelect={(key) => onSelectView(key as CrudComponentView)}
+        />
+        <SegmentedPills
+          options={[
+            { key: "ts", label: "TS" },
+            { key: "html", label: "HTML" },
+            { key: "css", label: "CSS" },
+            { key: "spec", label: "Spec" }
+          ]}
+          selectedKey={selectedFile}
+          onSelect={(key) => onSelectFile(key as CrudComponentFile)}
+        />
+        {onExpand ? (
+          <button
+            type="button"
+            onClick={onExpand}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+          >
+            <Expand className="h-3.5 w-3.5" />
+            Fullscreen
+          </button>
+        ) : null}
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <SplitEditorPane
+          label={selectedCodeFile.label}
+          language={selectedCodeFile.language}
+          value={selectedCodeFile.value}
+          copied={copiedTarget === selectedCodeFile.copyTarget}
+          onCopy={() => void onCopy(selectedCodeFile.copyTarget, selectedCodeFile.value)}
+          footer={
+            <button
+              type="button"
+              onClick={onToggleMeta}
+              className="flex w-full items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/90 px-3 py-2 text-left text-xs text-slate-400 hover:border-slate-700"
+            >
+              <div className="min-w-0">
+                <div className="font-medium text-slate-300">Component meta</div>
+                <div className="truncate text-[11px] text-slate-500">
+                  {selectedOutput.baseName} · {selectedCodeFile.label} · {selectedOutput.title}
+                </div>
+              </div>
+              {showMeta ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 shrink-0" />}
+            </button>
+          }
+          footerExpandedContent={
+            showMeta ? (
+              <div className="grid gap-2 rounded-md border border-slate-800 bg-slate-950/80 px-3 py-3 text-xs text-slate-400 md:grid-cols-3">
+                <MetaItem label="Component" value={selectedOutput.title} />
+                <MetaItem label="Base Name" value={selectedOutput.baseName} />
+                <MetaItem label="Visible File" value={selectedCodeFile.label} />
+              </div>
+            ) : null
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 function SplitEditorPane({
   label,
   language,
   value,
   copied,
-  onCopy
+  onCopy,
+  footer,
+  footerExpandedContent
 }: {
   label: string;
   language: string;
   value: string;
   copied: boolean;
   onCopy: () => void;
+  footer?: ReactNode;
+  footerExpandedContent?: ReactNode;
 }) {
   return (
-    <div className="min-h-0 flex flex-col overflow-hidden bg-slate-950">
+    <div className="min-h-0 flex h-full flex-col overflow-hidden bg-slate-950">
       <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
         <span>{label}</span>
         <button
@@ -619,8 +759,80 @@ function SplitEditorPane({
           options={{ ...editorOptions, readOnly: true }}
         />
       </div>
+      {footer ? <div className="border-t border-slate-800 p-2">{footer}</div> : null}
+      {footerExpandedContent ? <div className="border-t border-slate-800 p-2">{footerExpandedContent}</div> : null}
     </div>
   );
+}
+
+function SegmentedPills({
+  options,
+  selectedKey,
+  onSelect
+}: {
+  options: Array<{ key: string; label: string }>;
+  selectedKey: string;
+  onSelect: (key: string) => void;
+}) {
+  return (
+    <div className="inline-flex flex-wrap rounded-lg border border-slate-700 bg-slate-900/80 p-1 text-sm">
+      {options.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          onClick={() => onSelect(option.key)}
+          className={`rounded-md px-3 py-1.5 ${selectedKey === option.key ? "bg-cyan-400 text-slate-950" : "text-slate-300"}`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="truncate text-slate-200">{value}</div>
+    </div>
+  );
+}
+
+function getCrudFileDescriptor(
+  output: { baseName: string; ts: string; html: string; css: string; spec: string },
+  file: CrudComponentFile
+) {
+  switch (file) {
+    case "html":
+      return {
+        label: `${output.baseName}.html`,
+        language: "html",
+        value: output.html,
+        copyTarget: "componentHtml" as const
+      };
+    case "css":
+      return {
+        label: `${output.baseName}.css`,
+        language: "css",
+        value: output.css,
+        copyTarget: "componentCss" as const
+      };
+    case "spec":
+      return {
+        label: `${output.baseName}.spec.ts`,
+        language: "typescript",
+        value: output.spec,
+        copyTarget: "componentSpec" as const
+      };
+    default:
+      return {
+        label: `${output.baseName}.ts`,
+        language: "typescript",
+        value: output.ts,
+        copyTarget: "componentTs" as const
+      };
+  }
 }
 
 function OutputSidebarRail({
@@ -662,9 +874,6 @@ function OutputSidebarRail({
   );
 }
 
-function contextualFilename(view: CrudComponentView, extension: "ts" | "html") {
-  return view === "list" ? `list.component.${extension}` : `form.component.${extension}`;
-}
 
 function SidebarRailButton({
   active,
@@ -707,3 +916,17 @@ function buildDefaultArchiveName(value: string): string {
   const sanitized = toKebabCase(value.trim() || "contractflow-export").replace(/^-+|-+$/g, "");
   return sanitized || "contractflow-export";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

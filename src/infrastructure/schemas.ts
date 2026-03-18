@@ -56,10 +56,16 @@ export const exportArchiveSchema = z.object({
     angularServiceDependencies: z.string().optional(),
     angularMockService: z.string().optional(),
     jsonMocks: z.string().optional(),
-    listComponentTs: z.string().optional(),
-    listComponentHtml: z.string().optional(),
-    formComponentTs: z.string().optional(),
-    formComponentHtml: z.string().optional()
+    componentBaseName: z.string().optional(),
+    componentTs: z.string().optional(),
+    componentHtml: z.string().optional(),
+    componentCss: z.string().optional(),
+    componentSpec: z.string().optional(),
+    editorBaseName: z.string().optional(),
+    editorTs: z.string().optional(),
+    editorHtml: z.string().optional(),
+    editorCss: z.string().optional(),
+    editorSpec: z.string().optional()
   })
 });
 
@@ -79,3 +85,4 @@ export const serviceSchema = z.object({
   ),
   config: engineConfigSchema.optional()
 });
+

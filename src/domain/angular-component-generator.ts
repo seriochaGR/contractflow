@@ -8,11 +8,13 @@ interface CrudGenerationContext {
   cleanName: string;
   modelType: string;
   serviceName: string;
-  listComponentName: string;
-  formComponentName: string;
+  componentName: string;
+  editorComponentName: string;
   resourceKebab: string;
-  listSelector: string;
-  formSelector: string;
+  componentSelector: string;
+  editorSelector: string;
+  componentBaseName: string;
+  editorBaseName: string;
   idKey: string | null;
   fields: CrudField[];
 }
@@ -28,12 +30,12 @@ interface CrudField {
 }
 
 interface TemplateStrategy {
-  renderFormHtml: (context: CrudGenerationContext) => string;
-  renderListHtml: (context: CrudGenerationContext) => string;
-  renderFormStyles: (context: CrudGenerationContext) => string;
-  renderListStyles: (context: CrudGenerationContext) => string;
-  listImports: string[];
-  formImports: string[];
+  renderEditorHtml: (context: CrudGenerationContext) => string;
+  renderComponentHtml: (context: CrudGenerationContext) => string;
+  renderEditorStyles: (context: CrudGenerationContext) => string;
+  renderComponentStyles: (context: CrudGenerationContext) => string;
+  componentImports: string[];
+  editorImports: string[];
 }
 
 const MATERIAL_IMPORTS: Record<string, string> = {
@@ -45,38 +47,44 @@ const MATERIAL_IMPORTS: Record<string, string> = {
 
 const TEMPLATE_STRATEGIES: Record<UiFramework, TemplateStrategy> = {
   none: {
-    listImports: [],
-    formImports: [],
-    renderFormHtml: renderSemanticFormHtml,
-    renderListHtml: renderSemanticListHtml,
-    renderFormStyles: renderSemanticFormStyles,
-    renderListStyles: renderSemanticListStyles
+    componentImports: [],
+    editorImports: [],
+    renderEditorHtml: renderSemanticEditorHtml,
+    renderComponentHtml: renderSemanticComponentHtml,
+    renderEditorStyles: renderSemanticEditorStyles,
+    renderComponentStyles: renderSemanticComponentStyles
   },
   material: {
-    listImports: ["MatButtonModule"],
-    formImports: ["MatButtonModule", "MatCheckboxModule", "MatFormFieldModule", "MatInputModule"],
-    renderFormHtml: renderMaterialFormHtml,
-    renderListHtml: renderMaterialListHtml,
-    renderFormStyles: renderMaterialFormStyles,
-    renderListStyles: renderMaterialListStyles
+    componentImports: ["MatButtonModule"],
+    editorImports: ["MatButtonModule", "MatCheckboxModule", "MatFormFieldModule", "MatInputModule"],
+    renderEditorHtml: renderMaterialEditorHtml,
+    renderComponentHtml: renderMaterialComponentHtml,
+    renderEditorStyles: renderMaterialEditorStyles,
+    renderComponentStyles: renderMaterialComponentStyles
   },
   tailwind: {
-    listImports: [],
-    formImports: [],
-    renderFormHtml: renderTailwindFormHtml,
-    renderListHtml: renderTailwindListHtml,
-    renderFormStyles: renderTailwindFormStyles,
-    renderListStyles: renderTailwindListStyles
+    componentImports: [],
+    editorImports: [],
+    renderEditorHtml: renderTailwindEditorHtml,
+    renderComponentHtml: renderTailwindComponentHtml,
+    renderEditorStyles: renderTailwindEditorStyles,
+    renderComponentStyles: renderTailwindComponentStyles
   }
 };
 
 export function generateAngularComponents(models: ModelSpec[], config: EngineConfig): AngularCrudComponentArtifacts {
   if (models.length === 0) {
     return {
-      listTs: "// No models available for component generation.",
-      listHtml: "<!-- No models available for component generation. -->",
-      formTs: "// No models available for component generation.",
-      formHtml: "<!-- No models available for component generation. -->"
+      componentBaseName: "entity.component",
+      componentTs: "// No models available for component generation.",
+      componentHtml: "<!-- No models available for component generation. -->",
+      componentCss: "/* No models available for component generation. */",
+      componentSpec: "// No models available for component generation.",
+      editorBaseName: "entity-editor.component",
+      editorTs: "// No models available for component generation.",
+      editorHtml: "<!-- No models available for component generation. -->",
+      editorCss: "/* No models available for component generation. */",
+      editorSpec: "// No models available for component generation."
     };
   }
 
@@ -86,10 +94,12 @@ export function generateAngularComponents(models: ModelSpec[], config: EngineCon
   const entityName = toPascalCase(cleanName || rootModel.name);
   const modelType = `${config.modelPrefix}${rootModel.name}`;
   const serviceName = `${entityName}${config.serviceSuffix}`;
-  const formComponentName = `${entityName}FormComponent`;
-  const listComponentName = `${entityName}ListComponent`;
-  const listSelector = `cf-${resourceKebab}-list`;
-  const formSelector = `cf-${resourceKebab}-form`;
+  const componentName = `${entityName}Component`;
+  const editorComponentName = `${entityName}EditorComponent`;
+  const componentSelector = `cf-${resourceKebab}`;
+  const editorSelector = `cf-${resourceKebab}-editor`;
+  const componentBaseName = `${resourceKebab}.component`;
+  const editorBaseName = `${resourceKebab}-editor.component`;
   const idKey = findIdProperty(rootModel, config);
   const fields = rootModel.properties.map((property) => createCrudField(property, config));
 
@@ -99,28 +109,35 @@ export function generateAngularComponents(models: ModelSpec[], config: EngineCon
     cleanName,
     modelType,
     serviceName,
-    listComponentName,
-    formComponentName,
+    componentName,
+    editorComponentName,
     resourceKebab,
-    listSelector,
-    formSelector,
+    componentSelector,
+    editorSelector,
+    componentBaseName,
+    editorBaseName,
     idKey,
     fields
   };
 
   return {
-    listTs: renderListComponentTs(context),
-    listHtml: TEMPLATE_STRATEGIES[config.uiFramework].renderListHtml(context),
-    formTs: renderFormComponentTs(context),
-    formHtml: TEMPLATE_STRATEGIES[config.uiFramework].renderFormHtml(context)
+    componentBaseName,
+    componentTs: renderComponentTs(context),
+    componentHtml: TEMPLATE_STRATEGIES[config.uiFramework].renderComponentHtml(context),
+    componentCss: TEMPLATE_STRATEGIES[config.uiFramework].renderComponentStyles(context),
+    componentSpec: renderComponentSpec(context),
+    editorBaseName,
+    editorTs: renderEditorTs(context),
+    editorHtml: TEMPLATE_STRATEGIES[config.uiFramework].renderEditorHtml(context),
+    editorCss: TEMPLATE_STRATEGIES[config.uiFramework].renderEditorStyles(context),
+    editorSpec: renderEditorSpec(context)
   };
 }
 
-function renderListComponentTs(context: CrudGenerationContext): string {
+function renderComponentTs(context: CrudGenerationContext): string {
   const strategy = TEMPLATE_STRATEGIES[context.config.uiFramework];
-  const materialImports = renderMaterialImports(strategy.listImports);
-  const componentImports = ["CommonModule", context.formComponentName, ...strategy.listImports].join(", ");
-  const styles = renderComponentStyles(strategy.renderListStyles(context));
+  const materialImports = renderMaterialImports(strategy.componentImports);
+  const componentImports = ["CommonModule", context.editorComponentName, ...strategy.componentImports].join(", ");
 
   return [
     buildCompatibilityBanner(context.config.angularVersion, "component"),
@@ -128,17 +145,17 @@ function renderListComponentTs(context: CrudGenerationContext): string {
     "import { Component, OnInit, inject } from '@angular/core';",
     ...materialImports,
     `import { ${context.serviceName} } from './${context.resourceKebab}.service';`,
-    `import { ${context.formComponentName} } from './${context.resourceKebab}-form.component';`,
+    `import { ${context.editorComponentName} } from './${context.editorBaseName}';`,
     `import type { ${context.modelType} } from './${context.resourceKebab}.contracts';`,
     "",
     "@Component({",
-    `  selector: '${context.listSelector}',`,
+    `  selector: '${context.componentSelector}',`,
     "  standalone: true,",
     `  imports: [${componentImports}],`,
-    `  templateUrl: './${context.resourceKebab}-list.component.html',`,
-    styles,
+    `  templateUrl: './${context.componentBaseName}.html',`,
+    `  styleUrl: './${context.componentBaseName}.css'`,
     "})",
-    `export class ${context.listComponentName} implements OnInit {`,
+    `export class ${context.componentName} implements OnInit {`,
     `  private readonly service = inject(${context.serviceName});`,
     "",
     `  items: ${context.modelType}[] = [];`,
@@ -201,11 +218,10 @@ function renderListComponentTs(context: CrudGenerationContext): string {
     .join("\n");
 }
 
-function renderFormComponentTs(context: CrudGenerationContext): string {
+function renderEditorTs(context: CrudGenerationContext): string {
   const strategy = TEMPLATE_STRATEGIES[context.config.uiFramework];
-  const materialImports = renderMaterialImports(strategy.formImports);
-  const componentImports = ["CommonModule", "ReactiveFormsModule", ...strategy.formImports].join(", ");
-  const styles = renderComponentStyles(strategy.renderFormStyles(context));
+  const materialImports = renderMaterialImports(strategy.editorImports);
+  const componentImports = ["CommonModule", "ReactiveFormsModule", ...strategy.editorImports].join(", ");
   const formControls = context.fields
     .map((field) => {
       const validators = field.validators.length ? `, [${field.validators.join(", ")}]` : "";
@@ -229,13 +245,13 @@ function renderFormComponentTs(context: CrudGenerationContext): string {
     `import type { ${context.modelType} } from './${context.resourceKebab}.contracts';`,
     "",
     "@Component({",
-    `  selector: '${context.formSelector}',`,
+    `  selector: '${context.editorSelector}',`,
     "  standalone: true,",
     `  imports: [${componentImports}],`,
-    `  templateUrl: './${context.resourceKebab}-form.component.html',`,
-    styles,
+    `  templateUrl: './${context.editorBaseName}.html',`,
+    `  styleUrl: './${context.editorBaseName}.css'`,
     "})",
-    `export class ${context.formComponentName} implements OnChanges {`,
+    `export class ${context.editorComponentName} implements OnChanges {`,
     "  private readonly fb = inject(FormBuilder);",
     `  private readonly service = inject(${context.serviceName});`,
     "",
@@ -293,6 +309,86 @@ function renderFormComponentTs(context: CrudGenerationContext): string {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function renderComponentSpec(context: CrudGenerationContext): string {
+  return [
+    "import { TestBed } from '@angular/core/testing';",
+    "import { of } from 'rxjs';",
+    `import { ${context.componentName} } from './${context.componentBaseName}';`,
+    `import { ${context.serviceName} } from './${context.resourceKebab}.service';`,
+    `import type { ${context.modelType} } from './${context.resourceKebab}.contracts';`,
+    "",
+    `describe('${context.componentName}', () => {`,
+    `  const serviceMock = {`,
+    `    list: () => of([] as ${context.modelType}[]),`,
+    "    delete: () => of(void 0)",
+    "  };",
+    "",
+    `  beforeEach(async () => {`,
+    "    await TestBed.configureTestingModule({",
+    `      imports: [${context.componentName}],`,
+    `      providers: [{ provide: ${context.serviceName}, useValue: serviceMock }]`,
+    "    }).compileComponents();",
+    "  });",
+    "",
+    "  it('should create', () => {",
+    `    const fixture = TestBed.createComponent(${context.componentName});`,
+    "    fixture.detectChanges();",
+    "",
+    "    expect(fixture.componentInstance).toBeTruthy();",
+    "  });",
+    "",
+    "  it('should load items on init', () => {",
+    `    const fixture = TestBed.createComponent(${context.componentName});`,
+    "    fixture.detectChanges();",
+    "",
+    "    expect(fixture.componentInstance.items).toEqual([]);",
+    "  });",
+    "});"
+  ].join("\n");
+}
+
+function renderEditorSpec(context: CrudGenerationContext): string {
+  return [
+    "import { TestBed } from '@angular/core/testing';",
+    "import { of } from 'rxjs';",
+    `import { ${context.editorComponentName} } from './${context.editorBaseName}';`,
+    `import { ${context.serviceName} } from './${context.resourceKebab}.service';`,
+    "",
+    `describe('${context.editorComponentName}', () => {`,
+    "  const serviceMock = {",
+    "    create: <T>(payload: T) => of(payload),",
+    "    update: <T>(_id: string, payload: T) => of(payload)",
+    "  };",
+    "",
+    "  beforeEach(async () => {",
+    "    await TestBed.configureTestingModule({",
+    `      imports: [${context.editorComponentName}],`,
+    `      providers: [{ provide: ${context.serviceName}, useValue: serviceMock }]`,
+    "    }).compileComponents();",
+    "  });",
+    "",
+    "  it('should create', () => {",
+    `    const fixture = TestBed.createComponent(${context.editorComponentName});`,
+    "    fixture.detectChanges();",
+    "",
+    "    expect(fixture.componentInstance).toBeTruthy();",
+    "  });",
+    "",
+    "  it('should emit cancel', () => {",
+    `    const fixture = TestBed.createComponent(${context.editorComponentName});`,
+    "    let canceled = false;",
+    "",
+    "    fixture.componentInstance.canceled.subscribe(() => {",
+    "      canceled = true;",
+    "    });",
+    "    fixture.componentInstance.cancel();",
+    "",
+    "    expect(canceled).toBe(true);",
+    "  });",
+    "});"
+  ].join("\n");
 }
 
 function createCrudField(property: PropertySpec, config: EngineConfig): CrudField {
@@ -357,7 +453,7 @@ function renderEmptyValue(field: CrudField): string {
   }
 }
 
-function renderSemanticListHtml(context: CrudGenerationContext): string {
+function renderSemanticComponentHtml(context: CrudGenerationContext): string {
   const headers = context.fields.map((field) => `          <th scope="col">${field.label}</th>`).join("\n");
   const cells = context.fields.map((field) => `          <td>{{ item.${field.controlName} }}</td>`).join("\n");
 
@@ -365,8 +461,8 @@ function renderSemanticListHtml(context: CrudGenerationContext): string {
     `<section class="crud-list-shell">`,
     `  <header class="crud-list-header">`,
     `    <div>`,
-    `      <h2>${toPascalCase(context.cleanName)} List</h2>`,
-    `      <p>Generated CRUD list wired to ${context.serviceName}.</p>`,
+    `      <h2>${toPascalCase(context.cleanName)}</h2>`,
+    `      <p>Generated CRUD component wired to ${context.serviceName}.</p>`,
     `    </div>`,
     `    <button type="button" (click)="startCreate()">New ${toPascalCase(context.cleanName)}</button>`,
     `  </header>`,
@@ -395,12 +491,12 @@ function renderSemanticListHtml(context: CrudGenerationContext): string {
     `    </tbody>`,
     `  </table>`,
     ``,
-    `  <${context.formSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.formSelector}>`,
+    `  <${context.editorSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.editorSelector}>`,
     `</section>`
   ].join("\n");
 }
 
-function renderMaterialListHtml(context: CrudGenerationContext): string {
+function renderMaterialComponentHtml(context: CrudGenerationContext): string {
   const headers = context.fields.map((field) => `          <th scope="col">${field.label}</th>`).join("\n");
   const cells = context.fields.map((field) => `          <td>{{ item.${field.controlName} }}</td>`).join("\n");
 
@@ -408,8 +504,8 @@ function renderMaterialListHtml(context: CrudGenerationContext): string {
     `<section class="crud-list-shell material-shell">`,
     `  <header class="crud-list-header">`,
     `    <div>`,
-    `      <h2>${toPascalCase(context.cleanName)} List</h2>`,
-    `      <p>Generated CRUD list wired to ${context.serviceName}.</p>`,
+    `      <h2>${toPascalCase(context.cleanName)}</h2>`,
+    `      <p>Generated CRUD component wired to ${context.serviceName}.</p>`,
     `    </div>`,
     `    <button mat-flat-button color="primary" type="button" (click)="startCreate()">New ${toPascalCase(context.cleanName)}</button>`,
     `  </header>`,
@@ -440,12 +536,12 @@ function renderMaterialListHtml(context: CrudGenerationContext): string {
     `    </table>`,
     `  </div>`,
     ``,
-    `  <${context.formSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.formSelector}>`,
+    `  <${context.editorSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.editorSelector}>`,
     `</section>`
   ].join("\n");
 }
 
-function renderTailwindListHtml(context: CrudGenerationContext): string {
+function renderTailwindComponentHtml(context: CrudGenerationContext): string {
   const headers = context.fields
     .map((field) => `            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">${field.label}</th>`)
     .join("\n");
@@ -457,8 +553,8 @@ function renderTailwindListHtml(context: CrudGenerationContext): string {
     `<section class="flex h-full flex-col gap-4 bg-slate-950/60 p-4">`,
     `  <header class="flex items-center justify-between gap-4">`,
     `    <div>`,
-    `      <h2 class="text-lg font-semibold text-slate-100">${toPascalCase(context.cleanName)} List</h2>`,
-    `      <p class="text-sm text-slate-400">Generated CRUD list wired to ${context.serviceName}.</p>`,
+    `      <h2 class="text-lg font-semibold text-slate-100">${toPascalCase(context.cleanName)}</h2>`,
+    `      <p class="text-sm text-slate-400">Generated CRUD component wired to ${context.serviceName}.</p>`,
     `    </div>`,
     `    <button type="button" class="rounded-md bg-cyan-400 px-4 py-2 font-medium text-slate-950" (click)="startCreate()">New ${toPascalCase(context.cleanName)}</button>`,
     `  </header>`,
@@ -491,17 +587,17 @@ function renderTailwindListHtml(context: CrudGenerationContext): string {
     `    </table>`,
     `  </div>`,
     ``,
-    `  <${context.formSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.formSelector}>`,
+    `  <${context.editorSelector} [value]="selectedItem" (saved)="handleSaved()" (canceled)="handleCanceled()"></${context.editorSelector}>`,
     `</section>`
   ].join("\n");
 }
 
-function renderSemanticFormHtml(context: CrudGenerationContext): string {
+function renderSemanticEditorHtml(context: CrudGenerationContext): string {
   const fields = context.fields.map((field) => renderSemanticField(field)).join("\n\n");
   return [
     `<form [formGroup]="form" (ngSubmit)="submit()" class="crud-form-shell">`,
     `  <fieldset>`,
-    `    <legend>${toPascalCase(context.cleanName)} Form</legend>`,
+    `    <legend>${toPascalCase(context.cleanName)} Editor</legend>`,
     `    <div class="crud-form-grid">`,
     fields,
     `    </div>`,
@@ -514,12 +610,12 @@ function renderSemanticFormHtml(context: CrudGenerationContext): string {
   ].join("\n");
 }
 
-function renderTailwindFormHtml(context: CrudGenerationContext): string {
+function renderTailwindEditorHtml(context: CrudGenerationContext): string {
   const fields = context.fields.map((field) => renderTailwindField(field)).join("\n\n");
   return [
     `<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4">`,
     `  <div>`,
-    `    <h3 class="text-lg font-semibold text-slate-100">${toPascalCase(context.cleanName)} Form</h3>`,
+    `    <h3 class="text-lg font-semibold text-slate-100">${toPascalCase(context.cleanName)} Editor</h3>`,
     `    <p class="text-sm text-slate-400">Create or update ${context.cleanName.toLowerCase()} records using reactive forms.</p>`,
     `  </div>`,
     `  <div class="grid gap-4 md:grid-cols-2">`,
@@ -533,13 +629,13 @@ function renderTailwindFormHtml(context: CrudGenerationContext): string {
   ].join("\n");
 }
 
-function renderMaterialFormHtml(context: CrudGenerationContext): string {
+function renderMaterialEditorHtml(context: CrudGenerationContext): string {
   const fields = context.fields.map((field) => renderMaterialField(field)).join("\n\n");
   return [
     `<form [formGroup]="form" (ngSubmit)="submit()" class="material-form-shell">`,
     `  <div class="material-form-header">`,
-    `    <h3>${toPascalCase(context.cleanName)} Form</h3>`,
-    `    <p>Material-ready CRUD form with reactive controls.</p>`,
+    `    <h3>${toPascalCase(context.cleanName)} Editor</h3>`,
+    `    <p>Material-ready CRUD editor with reactive controls.</p>`,
     `  </div>`,
     `  <div class="material-form-grid">`,
     fields,
@@ -601,7 +697,7 @@ function renderMaterialField(field: CrudField): string {
   ].join("\n");
 }
 
-function renderSemanticListStyles(): string {
+function renderSemanticComponentStyles(): string {
   return [
     `:host {`,
     `  display: block;`,
@@ -670,7 +766,7 @@ function renderSemanticListStyles(): string {
   ].join("\n");
 }
 
-function renderSemanticFormStyles(): string {
+function renderSemanticEditorStyles(): string {
   return [
     `:host {`,
     `  display: block;`,
@@ -733,7 +829,7 @@ function renderSemanticFormStyles(): string {
   ].join("\n");
 }
 
-function renderMaterialListStyles(): string {
+function renderMaterialComponentStyles(): string {
   return [
     `:host {`,
     `  display: block;`,
@@ -781,7 +877,7 @@ function renderMaterialListStyles(): string {
   ].join("\n");
 }
 
-function renderMaterialFormStyles(): string {
+function renderMaterialEditorStyles(): string {
   return [
     `:host {`,
     `  display: block;`,
@@ -817,7 +913,7 @@ function renderMaterialFormStyles(): string {
   ].join("\n");
 }
 
-function renderTailwindListStyles(): string {
+function renderTailwindComponentStyles(): string {
   return [
     `:host {`,
     `  display: block;`,
@@ -825,21 +921,12 @@ function renderTailwindListStyles(): string {
   ].join("\n");
 }
 
-function renderTailwindFormStyles(): string {
+function renderTailwindEditorStyles(): string {
   return [
     `:host {`,
     `  display: block;`,
     `}`
   ].join("\n");
-}
-
-function renderComponentStyles(styles: string): string {
-  const body = styles
-    .split("\n")
-    .map((line) => `    ${line}`)
-    .join("\n");
-
-  return `  styles: [\`\n${body}\n  \`]`;
 }
 
 function findIdProperty(model: ModelSpec, config: EngineConfig): string | null {
@@ -851,5 +938,7 @@ function findIdProperty(model: ModelSpec, config: EngineConfig): string | null {
 function renderMaterialImports(modules: string[]): string[] {
   return Array.from(new Set(modules)).map((moduleName) => `import { ${moduleName} } from '${MATERIAL_IMPORTS[moduleName]}';`);
 }
+
+
 
 

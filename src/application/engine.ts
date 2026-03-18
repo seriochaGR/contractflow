@@ -16,10 +16,16 @@ export interface EngineOutput extends ConvertResult {
 }
 
 const EMPTY_CRUD_COMPONENTS: AngularCrudComponentArtifacts = {
-  listTs: "",
-  listHtml: "",
-  formTs: "",
-  formHtml: ""
+  componentBaseName: "entity.component",
+  componentTs: "",
+  componentHtml: "",
+  componentCss: "",
+  componentSpec: "",
+  editorBaseName: "entity-editor.component",
+  editorTs: "",
+  editorHtml: "",
+  editorCss: "",
+  editorSpec: ""
 };
 
 export function convertInput(request: ConvertRequest): ConvertResult {
@@ -66,3 +72,4 @@ export function generateMockService(models: ModelSpec[], config?: Partial<Engine
 export function generateMocks(models: ModelSpec[]): string {
   return generateJsonMocks(models);
 }
+

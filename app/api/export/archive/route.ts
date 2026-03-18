@@ -35,10 +35,16 @@ function buildArchiveEntries(
     angularServiceDependencies?: string;
     angularMockService?: string;
     jsonMocks?: string;
-    listComponentTs?: string;
-    listComponentHtml?: string;
-    formComponentTs?: string;
-    formComponentHtml?: string;
+    componentBaseName?: string;
+    componentTs?: string;
+    componentHtml?: string;
+    componentCss?: string;
+    componentSpec?: string;
+    editorBaseName?: string;
+    editorTs?: string;
+    editorHtml?: string;
+    editorCss?: string;
+    editorSpec?: string;
   }
 ): ZipArchiveEntry[] {
   const root = `${rootName}/`;
@@ -51,11 +57,17 @@ function buildArchiveEntries(
   ];
 
   const entries: ZipArchiveEntry[] = directories.map((path) => ({ path, directory: true }));
+  const componentBaseName = sanitizeComponentBaseName(files.componentBaseName, "entity.component");
+  const editorBaseName = sanitizeComponentBaseName(files.editorBaseName, "entity-editor.component");
 
-  if (files.listComponentTs?.trim()) entries.push({ path: `${root}components/list.component.ts`, content: files.listComponentTs });
-  if (files.listComponentHtml?.trim()) entries.push({ path: `${root}components/list.component.html`, content: files.listComponentHtml });
-  if (files.formComponentTs?.trim()) entries.push({ path: `${root}components/form.component.ts`, content: files.formComponentTs });
-  if (files.formComponentHtml?.trim()) entries.push({ path: `${root}components/form.component.html`, content: files.formComponentHtml });
+  if (files.componentTs?.trim()) entries.push({ path: `${root}components/${componentBaseName}.ts`, content: files.componentTs });
+  if (files.componentHtml?.trim()) entries.push({ path: `${root}components/${componentBaseName}.html`, content: files.componentHtml });
+  if (files.componentCss?.trim()) entries.push({ path: `${root}components/${componentBaseName}.css`, content: files.componentCss });
+  if (files.componentSpec?.trim()) entries.push({ path: `${root}components/${componentBaseName}.spec.ts`, content: files.componentSpec });
+  if (files.editorTs?.trim()) entries.push({ path: `${root}components/${editorBaseName}.ts`, content: files.editorTs });
+  if (files.editorHtml?.trim()) entries.push({ path: `${root}components/${editorBaseName}.html`, content: files.editorHtml });
+  if (files.editorCss?.trim()) entries.push({ path: `${root}components/${editorBaseName}.css`, content: files.editorCss });
+  if (files.editorSpec?.trim()) entries.push({ path: `${root}components/${editorBaseName}.spec.ts`, content: files.editorSpec });
   if (files.contracts?.trim()) entries.push({ path: `${root}models/contracts.ts`, content: files.contracts });
   if (files.angularService?.trim()) entries.push({ path: `${root}services/angular.service.ts`, content: files.angularService });
   if (files.angularServiceDependencies?.trim()) {
@@ -70,4 +82,14 @@ function buildArchiveEntries(
 function sanitizeArchiveName(value: string): string {
   const normalized = value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   return normalized || "contractflow-export";
+}
+
+function sanitizeComponentBaseName(value: string | undefined, fallback: string): string {
+  const normalized = (value ?? fallback)
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || fallback;
 }
